@@ -1,0 +1,67 @@
+.\" PHP-FastCGI manualpage
+.\"
+.TH PHP-FCGI 1
+
+
+.SH NAME
+php-fcgi - start PHP as FastCGI daemon
+
+
+.SH SYNOPSIS
+.B php-fcgi
+[-c <configfile>] [-h] [-k] [-q] [-v]
+.br
+-c <configfile>: the configuration file to be used.
+.br
+-h: show help and exit.
+.br
+-k: kill running FastCGI servers.
+.br
+-q: don't print the results.
+.br
+-v: show version and exit.
+
+
+.SH DESCRIPTION
+The PHP-FastCGI utility can be used to start PHP as a FastCGI daemon. It uses php-cgi to do so.
+
+
+.\" ==========[ Configuration ]================================================
+
+.SH CONFIGURATION
+The configuration is done via the configuration file ${CONFIG_DIR}/php-fcgi.conf.
+.br
+
+The following options are available:
+.TP
+.B MaxRequests = <number>
+The number of maximum requests one fork will handle before dying and respawning.
+.br
+Default = 100, example: MaxRequests = 50
+
+.TP
+.B PIDfile = <path to PID-file>
+This describes where php-fcgi should store the PID's of the FastCGI daemons.
+.br
+Default = ${PID_DIR}/php-fcgi.pid, example: PIDfile = /data/php-fcgi.pid
+
+.TP
+.B Setenv <key> = <value>
+Sets an environment variable after clearing the entire environment and before starting the PHP FastCGI daemon.
+.br
+Example: Setenv somekey = somevalue
+
+.TP
+.B Server = <php-cgi executable> ; <forks> ; <binding> ; <uid>[:<gid's>][ ; <PHP configuration file>]
+Defines how a FastCGI daemon should be executed. If a pipe-sign in <php-cgi executable> is used, the part before the pipe will be used as a chroot directory. Be carefull with using chrooted FastCGI servers in combination with UserWebsite and Alias (see hiawatha(1) for more information about these options). The userid and groupid 'root' are not allowed.
+.br
+Example: Server = /usr/bin/php5-cgi ; 3 ; 127.0.0.1:2005 ; www-data ; /etc/php5/cgi/php.ini
+         Server = /usr/bin/php5-cgi ; 3 ; /tmp/hiawatha.sock ; 33:33
+
+
+.SH SEE ALSO
+The PHP-FastCGI utility is part of the Hiawatha webserver. See hiawatha(1) for more information about Hiawatha.
+
+
+.SH AUTHOR
+Hugo Leisink <hugo@hiawatha-webserver.org> - \fIhttp://www.hiawatha-webserver.org/\fP

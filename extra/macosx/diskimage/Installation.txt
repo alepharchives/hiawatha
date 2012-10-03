@@ -1,0 +1,8 @@
+Installation of the Hiawatha webserver
+=======================================
+
+If you've already installed the Hiawatha webserver on this machine, make a backup of the files in /usr/local/etc/hiawatha or /etc/hiawatha.
+
+Double-click the .pkg file to start the installation and follow the instructions on the screen. This will install Hiawatha in /usr/local. The configuration files can be found in /usr/local/etc/hiawatha.
+
+Open a Terminal and execute 'sudo /usr/local/sbin/hiawatha' to start the Hiawatha webserver.

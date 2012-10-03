@@ -1,0 +1,69 @@
+#!/bin/bash
+#
+# PHP-FastCGI start/stop script
+#
+### BEGIN INIT INFO
+# Provides:          php-fcgi
+# Required-Start:    $syslog $network $remote_fs
+# Required-Stop:     $syslog $network $remote_fs
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: PHP FastCGI daemon
+# Description:       Run PHP as a FastCGI daemon.
+### END INIT INFO
+
+PATH="/bin:/usr/bin:/sbin:/usr/sbin"
+PHP_FCGI="/usr/sbin/php-fcgi"
+PIDFILE="/var/run/php-fcgi.pid"
+
+NORMAL="\033[0m"
+RED="\033[00;31m"
+YELLOW="\033[00;33m"
+GREEN="\033[00;32m"
+
+test -f ${PHP_FCGI} || exit 0
+
+function start_php_fcgi {
+	if [ -f ${PIDFILE} ]; then
+		echo -e ${YELLOW}"FastCGI server is already running"${NORMAL}
+	else
+		echo -n "Starting FastCGI server: "
+		${PHP_FCGI} -q
+		result=$?
+		if [ "${result}" = "0" ]; then
+			echo -e ${GREEN}"PHP"${NORMAL}
+		else
+			echo -e ${RED}"error!"${NORMAL}
+		fi
+	fi
+}
+
+function stop_php_fcgi {
+	if [ -f ${PIDFILE} ]; then
+
+		echo -en "Stopping FastCGI server: "${GREEN}
+		${PHP_FCGI} -q -k
+		echo -e "PHP"${NORMAL}
+	else 
+		echo -e ${YELLOW}"FastCGI server is not running"${NORMAL}
+	fi
+}
+
+case "$1" in
+	start)
+		start_php_fcgi
+		;;
+	stop)
+		stop_php_fcgi
+		;;
+	restart|force-reload)
+		stop_php_fcgi
+		start_php_fcgi
+		;;
+	*)
+		echo "Usage: $0 {start|stop|restart}"
+		exit 1
+		;;
+esac
+
+exit 0

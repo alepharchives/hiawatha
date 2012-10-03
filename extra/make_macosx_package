@@ -1,0 +1,72 @@
+#!/bin/sh
+
+if [ ! -f /mach_kernel ]; then
+	echo "MacOS X required."
+	exit
+fi
+
+# Checking for tools required for building a MacOS X package
+#
+echo "-- Checking for required tools"
+tools="/usr/bin/gcc /Developer/Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker /usr/bin/hdiutil"
+missing=""
+for tool in ${tools}; do
+	if [ ! -f ${tool} ]; then
+		missing="${missing} ${tool}"
+	fi
+done
+if [ "${missing}" != "" ]; then
+	echo "The following tools are missing:${missing}"
+	exit
+fi
+
+# Setup build directory
+#
+cd `dirname $0`/..
+pwd=`pwd | awk '{gsub(/\//,"\\\\/");print}'`
+if [ -d build ]; then
+	rm -rf build
+fi
+mkdir build
+cd build
+
+# Compile Hiawatha
+#
+cmake .. -DWEBROOT_DIR=/Library/Webserver/hiawatha
+make
+
+# Make MacOS X package
+#
+strip cgi-wrapper hiawatha php-fcgi ssi-cgi wigwam
+make install DESTDIR=`pwd`/root
+mkdir -p root/Library/PreferencePanes
+cp -r ../extra/macosx/HiawathaWebserver.prefPane root/Library/PreferencePanes
+mkdir -p root/Library/LaunchDaemons
+cp ../extra/macosx/org.hiawatha-webserver.httpd.plist root/Library/LaunchDaemons
+
+if [ -d hiawatha.pmdoc ]; then
+	rm -rf hiawatha.pmdoc
+fi
+mkdir hiawatha.pmdoc
+cp ../extra/macosx/hiawatha.pmdoc/*.png hiawatha.pmdoc
+version=`grep VERSION config.h | cut -f2 -d'"'`
+for file in `ls ../extra/macosx/hiawatha.pmdoc/*.xml`; do
+	file=`basename ${file}`
+	cat ../extra/macosx/hiawatha.pmdoc/${file} | \
+		sed s/\{BASEDIR\}/${pwd}/g | \
+		sed s/\{VERSION\}/${version}/g > \
+		hiawatha.pmdoc/${file}
+done
+echo "-- Building package"
+cp -r ../extra/macosx/diskimage .
+/Developer/Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker \
+	--doc hiawatha.pmdoc --out diskimage/hiawatha-${version}.pkg
+echo "-- Buiding disk image"
+hdiutil create ../"Hiawatha ${version}".dmg -srcfolder diskimage -volname "Hiawatha ${version}" -ov
+
+# Done
+#
+cd ..
+if [ "$1" != "-b" ]; then
+	rm -rf build
+fi

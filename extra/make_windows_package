@@ -1,0 +1,93 @@
+#!/bin/sh
+
+if [ `uname -o` != "Cygwin" ]; then
+	echo "Cygwin required."
+	exit
+fi
+
+# Checking for tools required for building a Windows package
+#
+echo "-- Checking for required tools"
+tools="/usr/bin/cat /usr/bin/gcc /usr/bin/man /usr/bin/ps2pdf /usr/bin/unix2dos /usr/bin/zip"
+missing=""
+for tool in ${tools}; do
+	if [ ! -f ${tool} ]; then
+		missing="${missing} ${tool}"
+	fi
+done
+if [ "${missing}" != "" ]; then
+	echo "The following tools are missing:${missing}"
+	exit
+fi
+
+# Setup build directory
+#
+cd `dirname $0`/..
+if [ -d build ]; then
+	rm -rf build
+fi
+mkdir build
+cd build
+
+# Compile Hiawatha
+#
+cmake .. -DCMAKE_INSTALL_SBINDIR="/cygdrive/c/Program Files/Hiawatha/bin" \
+         -DCONFIG_DIR="/cygdrive/c/Program Files/Hiawatha/config" \
+         -DLOG_DIR="/cygdrive/c/Program Files/Hiawatha/log" \
+         -DPID_DIR="/cygdrive/c/Program Files/Hiawatha/log" \
+         -DWORK_DIR="/cygdrive/c/Program Files/Hiawatha/work" \
+         -DWEBROOT_DIR="C:\wwwroot"
+make
+
+# Make Windows package
+#
+echo "-- Building package"
+version=`grep VERSION config.h | cut -f2 -d'"'`
+dir="hiawatha-${version}"
+
+mkdir -p ${dir}/Hiawatha
+mkdir ${dir}/Hiawatha/bin
+mkdir ${dir}/Hiawatha/config
+mkdir ${dir}/Hiawatha/log
+mkdir ${dir}/Hiawatha/work
+mkdir ${dir}/wwwroot
+
+cp hiawatha.exe ${dir}/Hiawatha/bin
+cp ssi-cgi.exe ${dir}/Hiawatha/bin
+cp wigwam.exe ${dir}/Hiawatha/bin
+cp polarssl/library/cygpolarssl-1.dll ${dir}/Hiawatha/bin
+strip ${dir}/Hiawatha/bin/*.exe
+
+files="cygcrypt-0.dll cyggcc_s-1.dll cygrunsrv.exe cygiconv-2.dll cygwin1.dll cygxml2-2.dll cygxslt-1.dll cygz.dll"
+for file in ${files}; do
+	cp /bin/${file} ${dir}/Hiawatha/bin
+done
+
+cp ../config/index.xslt ${dir}/Hiawatha/config
+cp ../config/mimetype.conf ${dir}/Hiawatha/config
+cp ../extra/windows/*.lnk ${dir}/Hiawatha
+cp ../extra/windows/*.bat ${dir}/Hiawatha/bin
+cp ../extra/windows/hiawatha.conf ${dir}/Hiawatha/config
+cp ../extra/windows/Hiawatha.ico ${dir}/Hiawatha
+cp ../extra/windows/Installation.txt ${dir}
+cp ../extra/index.html ${dir}/wwwroot
+cp ../ChangeLog ${dir}/ChangeLog.txt
+unix2dos ${dir}/ChangeLog.txt
+
+touch ${dir}/Hiawatha/log/access.log
+touch ${dir}/Hiawatha/log/error.log
+touch ${dir}/Hiawatha/log/exploit.log
+touch ${dir}/Hiawatha/log/system.log
+
+man -P cat -t man/hiawatha.1 | ps2pdf - > ${dir}/hiawatha.pdf
+man -P cat -t ../man/ssi-cgi.1 | ps2pdf - > ${dir}/ssi-cgi.pdf
+man -P cat -t ../man/wigwam.1 | ps2pdf - > ${dir}/wigwam.pdf
+
+zip -r ../hiawatha-${version}.zip ${dir}
+
+# Done
+#
+cd ..
+if [ "$1" != "-b" ]; then
+	rm -rf build
+fi

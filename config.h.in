@@ -1,0 +1,47 @@
+/* Directory settings
+ */
+#define CONFIG_DIR  "${CONFIG_DIR}"
+#define LOG_DIR     "${LOG_DIR}"
+#define PID_DIR     "${PID_DIR}"
+#define SBIN_DIR    "${CMAKE_INSTALL_FULL_SBINDIR}"
+#define VERSION     "${HIAWATHA_VERSION}"
+#define WEBROOT_DIR "${WEBROOT_DIR}"
+#define WORK_DIR    "${WORK_DIR}"
+
+/* Settings
+ */
+#define _GNU_SOURCE 1
+#cmakedefine CYGWIN ${CYGWIN}
+#cmakedefine CIFS ${CIFS}
+
+/* Hiawatha modules
+ */
+#cmakedefine ENABLE_CACHE ${ENABLE_CACHE}
+#cmakedefine ENABLE_CHROOT ${ENABLE_CHROOT}
+#cmakedefine ENABLE_DEBUG ${ENABLE_DEBUG}
+#cmakedefine ENABLE_IPV6 ${ENABLE_IPV6}
+#cmakedefine ENABLE_LOADCHECK ${ENABLE_LOADCHECK}
+#cmakedefine ENABLE_MONITOR ${ENABLE_MONITOR}
+#cmakedefine ENABLE_RPROXY ${ENABLE_RPROXY}
+#cmakedefine ENABLE_SSL ${ENABLE_SSL}
+#cmakedefine ENABLE_TOMAHAWK ${ENABLE_TOMAHAWK}
+#cmakedefine ENABLE_TOOLKIT ${ENABLE_TOOLKIT}
+#cmakedefine ENABLE_XSLT ${ENABLE_XSLT}
+
+/* Includes
+ */
+#cmakedefine HAVE_CRYPT_H ${HAVE_CRYPT_H}
+#cmakedefine HAVE_ARPA_INET_H ${HAVE_ARPA_INET_H}
+#cmakedefine HAVE_NETINET_IN_H ${HAVE_NETINET_IN_H}
+#cmakedefine HAVE_NETINET_TCP_H ${HAVE_NETINET_TCP_H}
+#cmakedefine HAVE_RPCSVC_CRYPT_H ${HAVE_RPCSVC_CRYPT_H}
+
+/* Functions
+ */
+#cmakedefine HAVE_SETENV ${HAVE_SETENV}
+#cmakedefine HAVE_UNSETENV ${HAVE_UNSETENV}
+#cmakedefine HAVE_CLEARENV ${HAVE_CLEARENV}
+#cmakedefine HAVE_STRCASECMP ${HAVE_STRCASECMP}
+#cmakedefine HAVE_STRNCASECMP ${HAVE_STRNCASECMP}
+#cmakedefine HAVE_STRNSTR ${HAVE_STRNSTR}
+#cmakedefine HAVE_STRCASESTR ${HAVE_STRCASESTR}

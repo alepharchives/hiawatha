@@ -1,0 +1,75 @@
+#!/bin/sh
+
+if [ ! -f /etc/debian_version ]; then
+	echo "Debian (clone) required."
+	exit
+fi
+
+# Checking for packages required for building a Debian package
+#
+echo "-- Checking for required packages"
+packages="gcc libc6-dev dpkg-dev debhelper fakeroot libxml2-dev libxslt1-dev zlib1g-dev"
+missing=""
+for package in ${packages}; do
+	installed=`dpkg -l ${package} | tail -1 | cut -b1-2`
+	if [ "$installed" != "ii" ]; then
+		missing="${missing} ${package}"
+	fi
+done
+if [ "${missing}" != "" ]; then
+	echo "The following packages are missing:${missing}"
+	exit
+fi
+
+# Setup build directory
+#
+cd `dirname $0`/..
+if [ -d build_debian_package ]; then
+	rm -rf build_debian_package
+fi
+mkdir build_debian_package
+cd build_debian_package
+cp -r ../extra/debian .
+
+# Compile Hiawatha
+#
+cmake .. -DCMAKE_INSTALL_PREFIX="" -DCMAKE_INSTALL_LIBDIR=usr/lib \
+         -DCMAKE_INSTALL_BINDIR=usr/bin -DCMAKE_INSTALL_SBINDIR=usr/sbin \
+         -DCMAKE_INSTALL_SYSCONFDIR=etc -DCMAKE_INSTALL_MANDIR=usr/share/man \
+         -DENABLE_TOMAHAWK=on -DENABLE_MONITOR=on
+make
+
+# Make Debian package
+#
+dh_testdir
+fakeroot dh_testroot
+if [ -f /usr/bin/dh_prep ]; then
+	dh_prep
+else
+	dh_clean -k
+fi
+dh_installdirs
+make install DESTDIR=`pwd`/debian/hiawatha
+echo "-- Building package"
+dh_strip
+gzip -9 debian/hiawatha/usr/share/man/man1/*
+cp -r logrotate.d debian/hiawatha/etc
+cp -r ../extra/debian/init.d debian/hiawatha/etc
+chmod 755 debian/hiawatha/etc/init.d/*
+fakeroot dh_installdocs
+cp ../ChangeLog debian/changelog
+fakeroot dh_installchangelogs
+gzip -9 debian/hiawatha/usr/share/doc/hiawatha/changelog*
+dh_installinit -o
+fakeroot dh_installdeb
+dh_shlibdeps -l/usr/lib/hiawatha
+fakeroot dh_gencontrol
+fakeroot dh_md5sums
+fakeroot dh_builddeb
+
+# Done
+#
+cd ..
+if [ "$1" != "-b" ]; then
+	rm -rf build_debian_package
+fi

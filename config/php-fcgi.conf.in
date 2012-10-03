@@ -1,0 +1,23 @@
+# PHP FastCGI configuration
+
+# Path to PID-file.
+# PidFile = <filename>
+#
+PidFile = @PID_DIR@/php-fcgi.pid
+
+# Number of maximum requests per fork before respawning.
+# MaxRequests = <number>
+#
+MaxRequests = 100
+
+# Set environment variables for the FastCGI processes.
+# Setenv <key> = <value>
+#
+
+# PHP FastCGI servers to start.
+# Server = <php-cgi executable>;<forks>;<binding>;<UID>[:<GIDs>][;<PHP configuration file>]
+#
+#Server = /usr/bin/php5-cgi ; 3 ; /var/lib/hiawatha/php-fcgi.sock ; www-data
+#Server = /usr/bin/php5-cgi ; 2 ; 127.0.0.1:2005 ; 1000:100,101
+#Server = /usr/bin/php5-cgi ; 3 ; 127.0.0.1:2005 ; www-data ; /etc/php5/cgi/php.ini
+#Server = /usr/chroot|usr/bin/php5-cgi ; 1 ; 127.0.0.1:2005 ; www-data

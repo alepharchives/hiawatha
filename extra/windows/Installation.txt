@@ -1,0 +1,30 @@
+INSTALLATION OF THE HIAWATHA WEBSERVER
+=======================================
+Copy the directory 'Hiawatha' to C:\Program Files\ and 'wwwroot' to C:\.
+Run 'C:\Program Files\Hiawatha\Hiawatha webserver' to start the webserver.
+
+
+INSTALLATION OF PHP
+====================
+To use PHP, download the PHP zip package from http://www.php.net/downloads.php and unzip it to C:\Program Files\PHP5\
+Optionally, run 'C:\Program Files\Hiawatha\PHP5 FastCGI' to start PHP as a FastCGI daemon.
+
+
+RUNNING HIAWATHA AS A WINDOWS SERVICE
+======================================
+After installation of Hiawatha, open a Command Prompt, go to the directory
+C:\Program Files\Hiawatha\bin and execute the following command:
+
+cygrunsrv.exe -I hiawatha -d "Hiawatha webserver" -f "Secure and advanced webserver" -p "C:\Program Files\Hiawatha\bin\hiawatha.exe" -a "-d"
+
+You can now run Hiawatha as Windows Service. Right-click on 'My Computer' -> 'Manage' -> 'Services and Applications' ->
+'Services' -> 'Hiawatha webserver' to start and stop Hiawatha. To remove this service, run the following command:
+
+cygrunsrv.exe -R hiawatha
+
+
+TROUBLESHOOTING
+================
+If you experience some trouble with Hiawatha under Windows, try installing Cygwin with the packages libxml2 and libxslt.
+
+If that doesn't solve your problem, use the forum at http://www.hiawatha-webserver.org/.
