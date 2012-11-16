@@ -76,7 +76,7 @@ static char *secure_string(char *str) {
 
 /* Log the Hiawatha process ID.
  */
-void log_pid(t_config *config, pid_t pid) {
+void log_pid(t_config *config, pid_t pid, uid_t UNUSED(server_uid)) {
 	FILE *fp;
 
 	if ((fp = fopen(config->pidfile, "w")) == NULL) {
@@ -86,12 +86,15 @@ void log_pid(t_config *config, pid_t pid) {
 
 	fprintf(fp, "%d\n", (int)pid);
 	fclose(fp);
+
 #ifndef CYGWIN
 	if (chmod(config->pidfile, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH) == -1) {
 		fprintf(stderr, "Warning: can't chmod PID file %s. Make sure it's only writable for root!\n", config->pidfile);
 	}
-	if (chown(config->pidfile, 0, 0) == -1) {
-		fprintf(stderr, "Warning: can't chown PID file %s. Make sure it's owned by root!\n", config->pidfile);
+	if (server_uid == 0) {
+		if (chown(config->pidfile, 0, 0) == -1) {
+			fprintf(stderr, "Warning: can't chown PID file %s. Make sure it's owned by root!\n", config->pidfile);
+		}
 	}
 #endif
 }

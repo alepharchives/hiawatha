@@ -172,7 +172,7 @@ int fetch_request(t_session *session) {
 		}
 
 #ifdef ENABLE_SSL
-		poll_result = session->binding->use_ssl ? ssl_pending(&(session->ssl_data)) : 0;
+		poll_result = session->binding->use_ssl ? ssl_pending(&(session->ssl_context)) : 0;
 
 		if (poll_result == 0) {
 #endif
@@ -219,7 +219,7 @@ int fetch_request(t_session *session) {
 				 */
 #ifdef ENABLE_SSL
 				if (session->binding->use_ssl) {
-					bytes_read = ssl_receive(&(session->ssl_data), session->request + session->bytes_in_buffer, 
+					bytes_read = ssl_receive(&(session->ssl_context), session->request + session->bytes_in_buffer,
 									session->buffer_size - session->bytes_in_buffer);
 				} else
 #endif

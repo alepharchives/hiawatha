@@ -173,7 +173,7 @@ cleanup:
 /*
  * Get a specific bit
  */
-int mpi_get_bit( mpi *X, size_t pos )
+int mpi_get_bit( const mpi *X, size_t pos )
 {
     if( X->n * biL <= pos )
         return( 0 );
@@ -406,7 +406,8 @@ int mpi_write_string( const mpi *X, int radix, char *s, size_t *slen )
                 if( c == 0 && k == 0 && ( i + j + 3 ) != 0 )
                     continue;
 
-                p += sprintf( p, "%02X", c );
+                *(p++) = "0123456789ABCDEF" [c / 16];
+                *(p++) = "0123456789ABCDEF" [c % 16];
                 k = 1;
             }
         }
@@ -444,7 +445,7 @@ int mpi_read_file( mpi *X, int radix, FILE *fin )
      * Buffer should have space for (short) label and decimal formatted MPI,
      * newline characters and '\0'
      */
-    char s[ POLARSSL_MPI_READ_BUFFER_SIZE ];
+    char s[ POLARSSL_MPI_RW_BUFFER_SIZE ];
 
     memset( s, 0, sizeof( s ) );
     if( fgets( s, sizeof( s ) - 1, fin ) == NULL )
@@ -473,9 +474,10 @@ int mpi_write_file( const char *p, const mpi *X, int radix, FILE *fout )
     int ret;
     size_t n, slen, plen;
     /*
-     * Buffer should have space for minus sign, hexified MPI and '\0'
+     * Buffer should have space for (short) label and decimal formatted MPI,
+     * newline characters and '\0'
      */
-    char s[ 2 * POLARSSL_MPI_MAX_SIZE + 2 ];
+    char s[ POLARSSL_MPI_RW_BUFFER_SIZE ];
 
     n = sizeof( s );
     memset( s, 0, n );
@@ -761,7 +763,7 @@ int mpi_add_abs( mpi *X, const mpi *A, const mpi *B )
             p = X->p + i;
         }
 
-        *p += c; c = ( *p < c ); i++;
+        *p += c; c = ( *p < c ); i++; p++;
     }
 
 cleanup:
@@ -1086,7 +1088,7 @@ int mpi_div_mpi( mpi *Q, mpi *R, const mpi *A, const mpi *B )
 
     n = X.n - 1;
     t = Y.n - 1;
-    mpi_shift_l( &Y, biL * (n - t) );
+    MPI_CHK( mpi_shift_l( &Y, biL * (n - t) ) );
 
     while( mpi_cmp_mpi( &X, &Y ) >= 0 )
     {
@@ -1101,7 +1103,7 @@ int mpi_div_mpi( mpi *Q, mpi *R, const mpi *A, const mpi *B )
             Z.p[i - t - 1] = ~0;
         else
         {
-#if defined(POLARSSL_HAVE_LONGLONG)
+#if defined(POLARSSL_HAVE_UDBL)
             t_udbl r;
 
             r  = (t_udbl) X.p[i] << biL;
@@ -1387,9 +1389,13 @@ int mpi_exp_mod( mpi *X, const mpi *A, const mpi *E, const mpi *N, mpi *_RR )
     size_t i, j, nblimbs;
     size_t bufsize, nbits;
     t_uint ei, mm, state;
-    mpi RR, T, W[ 2 << POLARSSL_MPI_WINDOW_SIZE ];
+    mpi RR, T, W[ 2 << POLARSSL_MPI_WINDOW_SIZE ], Apos;
+    int neg;
 
     if( mpi_cmp_int( N, 0 ) < 0 || ( N->p[0] & 1 ) == 0 )
+        return( POLARSSL_ERR_MPI_BAD_INPUT_DATA );
+
+    if( mpi_cmp_int( E, 0 ) < 0 )
         return( POLARSSL_ERR_MPI_BAD_INPUT_DATA );
 
     /*
@@ -1411,6 +1417,19 @@ int mpi_exp_mod( mpi *X, const mpi *A, const mpi *E, const mpi *N, mpi *_RR )
     MPI_CHK( mpi_grow( X, j ) );
     MPI_CHK( mpi_grow( &W[1],  j ) );
     MPI_CHK( mpi_grow( &T, j * 2 ) );
+
+    /*
+     * Compensate for negative A (and correct at the end)
+     */
+    neg = ( A->s == -1 );
+
+    mpi_init( &Apos );
+    if( neg )
+    {
+        MPI_CHK( mpi_copy( &Apos, A ) );
+        Apos.s = 1;
+        A = &Apos;
+    }
 
     /*
      * If 1st call, pre-compute R^2 mod N
@@ -1547,12 +1566,18 @@ int mpi_exp_mod( mpi *X, const mpi *A, const mpi *E, const mpi *N, mpi *_RR )
      */
     mpi_montred( X, N, mm, &T );
 
+    if( neg )
+    {
+        X->s = -1;
+        mpi_add_mpi( X, N, X );
+    }
+
 cleanup:
 
     for( i = (one << (wsize - 1)); i < (one << wsize); i++ )
         mpi_free( &W[i] );
 
-    mpi_free( &W[1] ); mpi_free( &T );
+    mpi_free( &W[1] ); mpi_free( &T ); mpi_free( &Apos );
 
     if( _RR == NULL )
         mpi_free( &RR );

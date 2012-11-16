@@ -96,7 +96,7 @@ int dhm_read_params( dhm_context *ctx,
                      unsigned char **p,
                      const unsigned char *end )
 {
-    int ret, n;
+    int ret;
 
     memset( ctx, 0, sizeof( dhm_context ) );
 
@@ -113,12 +113,6 @@ int dhm_read_params( dhm_context *ctx,
     if( end - *p < 2 )
         return( POLARSSL_ERR_DHM_BAD_INPUT_DATA );
 
-    n = ( (*p)[0] << 8 ) | (*p)[1];
-    (*p) += 2;
-
-    if( end != *p + n )
-        return( POLARSSL_ERR_DHM_BAD_INPUT_DATA );
-
     return( 0 );
 }
 
@@ -133,6 +127,9 @@ int dhm_make_params( dhm_context *ctx, int x_size,
     int ret, count = 0;
     size_t n1, n2, n3;
     unsigned char *p;
+
+    if( mpi_cmp_int( &ctx->P, 0 ) == 0 )
+        return( POLARSSL_ERR_DHM_BAD_INPUT_DATA );
 
     /*
      * Generate X as large as possible ( < P )
@@ -215,6 +212,9 @@ int dhm_make_public( dhm_context *ctx, int x_size,
     int ret, count = 0;
 
     if( ctx == NULL || olen < 1 || olen > ctx->len )
+        return( POLARSSL_ERR_DHM_BAD_INPUT_DATA );
+
+    if( mpi_cmp_int( &ctx->P, 0 ) == 0 )
         return( POLARSSL_ERR_DHM_BAD_INPUT_DATA );
 
     /*

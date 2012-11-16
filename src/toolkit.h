@@ -31,9 +31,9 @@
 #define IU_ISFILE        1
 #define IU_ISDIR         2
 
-typedef enum { tc_none, tc_match, tc_requesturi, 
+typedef enum { tc_none, tc_match, tc_requesturi,
 #ifdef ENABLE_SSL
-               tc_usessl, 
+               tc_usessl,
 #endif
                tc_oldbrowser } t_toolkit_condition;
 typedef enum { to_none, to_rewrite, to_sub, to_expire, to_skip, to_denyaccess, to_redirect,
@@ -81,7 +81,7 @@ bool toolkit_setting(char *key, char *value, t_url_toolkit *toolkit);
 bool toolkit_rules_oke(t_url_toolkit *url_toolkit);
 void init_toolkit_options(t_toolkit_options *options, char *website_root, t_url_toolkit *toolkit,
 #ifdef ENABLE_SSL
-                          bool use_ssl, 
+                          bool use_ssl,
 #endif
                           bool allow_dot_files, t_headerfield *headerfields);
 int use_toolkit(char *url, char *toolkit_id, t_toolkit_options *options);

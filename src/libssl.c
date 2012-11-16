@@ -13,8 +13,9 @@
 
 #ifdef ENABLE_SSL
 
-#define ENABLE_DEBUG_LEVEL   0
-#define TIMESTAMP_SIZE      40
+#define ENABLE_DEBUG_LEVEL      0
+#define TIMESTAMP_SIZE         40
+#define SNI_MAX_HOSTNAME_LEN  128
 
 #include <sys/types.h>
 #include <stdio.h>
@@ -26,42 +27,45 @@
 #include <sys/socket.h>
 #include "alternative.h"
 #include "libssl.h"
+#include "libstr.h"
 #include "log.h"
 #include "polarssl/ctr_drbg.h"
 #include "polarssl/entropy.h"
+#include "polarssl/dhm.h"
+#include "polarssl/ssl_cache.h"
+
+typedef struct type_sni_list {
+	t_charlist *hostname;
+	rsa_context *private_key;
+	x509_cert *certificate;
+	x509_cert *ca_certificate;
+	x509_crl  *ca_crl;
+
+	struct type_sni_list *next;
+} t_sni_list;
 
 static int ciphersuites[] = {
-	SSL_EDH_RSA_AES_256_SHA,
-	SSL_EDH_RSA_CAMELLIA_256_SHA,
-	SSL_EDH_RSA_AES_128_SHA,
-	SSL_EDH_RSA_CAMELLIA_128_SHA,
-	SSL_EDH_RSA_DES_168_SHA,
-	SSL_RSA_AES_256_SHA,
-	SSL_RSA_CAMELLIA_256_SHA,
-	SSL_RSA_AES_128_SHA,
-	SSL_RSA_CAMELLIA_128_SHA,
-	SSL_RSA_DES_168_SHA,
-	SSL_RSA_RC4_128_SHA,
-//	SSL_RSA_RC4_128_MD5,
+	TLS_RSA_WITH_RC4_128_SHA,
+	TLS_DHE_RSA_WITH_CAMELLIA_256_CBC_SHA256,
+	TLS_DHE_RSA_WITH_CAMELLIA_256_CBC_SHA,
+	TLS_DHE_RSA_WITH_AES_256_CBC_SHA256,
+	TLS_DHE_RSA_WITH_AES_256_CBC_SHA,
+	TLS_RSA_WITH_CAMELLIA_256_CBC_SHA256,
+	TLS_RSA_WITH_AES_256_CBC_SHA256,
+	TLS_RSA_WITH_AES_256_GCM_SHA384,
+	TLS_RSA_WITH_CAMELLIA_256_CBC_SHA,
+	TLS_RSA_WITH_AES_256_CBC_SHA,
 	0
 };
-
-static char *dhm_P = 
-	"E4004C1F94182000103D883A448B3F80" \
-	"2CE4B44A83301270002C20D0321CFD00" \
-	"11CCEF784C26A400F43DFB901BCA7538" \
-	"F2C6B176001CF5A0FD16D2C48B1D0C1C" \
-	"F6AC8E1DA6BCC3B4E1F96B0564965300" \
-	"FFA1D0B601EB2800F489AA512C4B248C" \
-	"01F76949A60BB7F00A40B1EAB64BDD48" \
-	"E8A700D60B7F1200FA8E77B0A979DABF";
-static char *dhm_G = "4";
 
 static char *ssl_error_logfile;
 static rsa_context rsa;
 static pthread_mutex_t random_mutex;
+static pthread_mutex_t cache_mutex;
 static ctr_drbg_context ctr_drbg;
 static entropy_context entropy;
+static t_sni_list *sni_list = NULL;
+static ssl_cache_context cache;
 
 /* Initialize SSL library
  */
@@ -73,7 +77,34 @@ void ssl_initialize(char *logfile) {
 	entropy_init(&entropy);
 	ctr_drbg_init(&ctr_drbg, entropy_func, &entropy, (unsigned char*)"Hiawatha_RND", 10);
 	ctr_drbg_set_prediction_resistance(&ctr_drbg, CTR_DRBG_PR_OFF);
+
+	ssl_cache_init(&cache);
+	ssl_cache_set_max_entries(&cache, 100);
+
 	pthread_mutex_init(&random_mutex, NULL);
+	pthread_mutex_init(&cache_mutex, NULL);
+}
+
+/* Add SNI information to list
+ */
+int ssl_register_sni(t_charlist *hostname, rsa_context *private_key, x509_cert *certificate,
+                x509_cert *ca_certificate, x509_crl *ca_crl) {
+	t_sni_list *sni;
+
+	if ((sni = (t_sni_list*)malloc(sizeof(t_sni_list))) == NULL) {
+		return -1;
+	}
+
+	sni->hostname = hostname;
+	sni->private_key = private_key;
+	sni->certificate = certificate;
+	sni->ca_certificate = ca_certificate;
+	sni->ca_crl = ca_crl;
+
+	sni->next = sni_list;
+	sni_list = sni;
+
+	return 0;
 }
 
 /* SSL debug callback function
@@ -94,6 +125,28 @@ static int ssl_random(void *p_rng, unsigned char *output, size_t len) {
 	pthread_mutex_lock(&random_mutex);
 	result = ctr_drbg_random(p_rng, output, len);
 	pthread_mutex_unlock(&random_mutex);
+
+	return result;
+}
+
+/* Required to use the SSL cache in a multithreaded application
+ */
+static int ssl_get_cache(void *data, ssl_session *session) {
+	int result;
+
+	pthread_mutex_lock(&cache_mutex);
+	result = ssl_cache_get(data, session);
+	pthread_mutex_unlock(&cache_mutex);
+
+	return result;
+}
+
+static int ssl_set_cache(void *data, const ssl_session *session) {
+	int result;
+
+	pthread_mutex_lock(&cache_mutex);
+	result = ssl_cache_set(data, session);
+	pthread_mutex_unlock(&cache_mutex);
 
 	return result;
 }
@@ -174,36 +227,83 @@ int ssl_load_ca_crl(char *file, x509_crl **ca_crl) {
 	return 0;
 }
 
+/* Server Name Indication callback function
+ */
+static int sni_callback(void UNUSED(*parameter), ssl_context *context, const unsigned char *sni_hostname, size_t len) {
+	char hostname[SNI_MAX_HOSTNAME_LEN + 1];
+	t_sni_list *sni;
+	int i;
+
+	if (len > SNI_MAX_HOSTNAME_LEN) {
+		return -1;
+	}
+	memcpy(hostname, sni_hostname, len);
+	hostname[len] = '\0';
+
+	sni = sni_list;
+	while (sni != NULL) {
+		for (i = 0; i < sni->hostname->size; i++) {
+			if (hostname_match(hostname, *(sni->hostname->item + i))) {
+				/* Set private key and certificate
+				 */
+				if ((sni->private_key != NULL) && (sni->certificate != NULL)) {
+					ssl_set_own_cert(context, sni->certificate, sni->private_key);
+				}
+
+				/* Set CA certificate for SSL client authentication
+				 */
+				if (sni->ca_certificate != NULL) {
+					ssl_set_authmode(context, SSL_VERIFY_REQUIRED);
+					ssl_set_ca_chain(context, sni->ca_certificate, sni->ca_crl, NULL);
+				}
+
+				return 0;
+			}
+		}
+		sni = sni->next;
+	}
+
+	return 0;
+}
+
 /* Accept incoming SSL connection
  */
-int ssl_accept(t_ssl_accept_data *sad, int timeout) {
-	int result, handshake;
+int ssl_accept(t_ssl_accept_data *sad, int timeout, int min_ssl_version) {
+	int result, handshake, skip;
 	struct timeval timer;
 	time_t start_time;
 
-	if (ssl_init(sad->ssl) != 0) {
+	if (ssl_init(sad->context) != 0) {
 		return -1;
 	}
 
-	ssl_set_endpoint(sad->ssl, SSL_IS_SERVER);
+	ssl_set_endpoint(sad->context, SSL_IS_SERVER);
 	if (sad->ca_certificate == NULL) {
-		ssl_set_authmode(sad->ssl, SSL_VERIFY_NONE);
+		ssl_set_authmode(sad->context, SSL_VERIFY_NONE);
 	} else {
-		ssl_set_authmode(sad->ssl, SSL_VERIFY_REQUIRED);
-		ssl_set_ca_chain(sad->ssl, sad->ca_certificate, sad->ca_crl, NULL);
+		ssl_set_authmode(sad->context, SSL_VERIFY_REQUIRED);
+		ssl_set_ca_chain(sad->context, sad->ca_certificate, sad->ca_crl, NULL);
 	}
 
-	ssl_set_rng(sad->ssl, ssl_random, &ctr_drbg);
-	ssl_set_dbg(sad->ssl, ssl_debug, stderr);
-	ssl_set_bio(sad->ssl, net_recv, sad->client_fd, net_send, sad->client_fd);
+	ssl_set_min_version(sad->context, SSL_MAJOR_VERSION_3, min_ssl_version);
+	ssl_set_renegotiation(sad->context, SSL_RENEGOTIATION_DISABLED);
 
-	ssl_set_ciphersuites(sad->ssl, ciphersuites);
+	ssl_set_rng(sad->context, ssl_random, &ctr_drbg);
+	ssl_set_dbg(sad->context, ssl_debug, stderr);
+	ssl_set_bio(sad->context, net_recv, sad->client_fd, net_send, sad->client_fd);
+	ssl_set_sni(sad->context, sni_callback, NULL);
 
-	memset(sad->session, 0, sizeof(ssl_session));
-	ssl_set_session(sad->ssl, 0, 0, sad->session);
+	ssl_set_session_cache(sad->context, ssl_get_cache, &cache, ssl_set_cache, &cache);
 
-	ssl_set_own_cert(sad->ssl, sad->certificate, sad->private_key);
-	ssl_set_dh_param(sad->ssl, dhm_P, dhm_G);
+	if ((min_ssl_version >= SSL_MINOR_VERSION_2) && (ciphersuites[0] == TLS_RSA_WITH_RC4_128_SHA)) {
+		skip = 1;
+	} else {
+		skip = 0;
+	}
+	ssl_set_ciphersuites(sad->context, ciphersuites + skip);
+
+	ssl_set_own_cert(sad->context, sad->certificate, sad->private_key);
+	ssl_set_dh_param(sad->context, POLARSSL_DHM_RFC5114_MODP_2048_P, POLARSSL_DHM_RFC5114_MODP_2048_G);
 
 	timer.tv_sec = timeout;
 	timer.tv_usec = 0;
@@ -211,16 +311,16 @@ int ssl_accept(t_ssl_accept_data *sad, int timeout) {
 	start_time = time(NULL);
 
 	result = 0;
-	while ((handshake = ssl_handshake(sad->ssl)) != 0) {
+	while ((handshake = ssl_handshake(sad->context)) != 0) {
 		if ((handshake != POLARSSL_ERR_NET_WANT_READ) && (handshake != POLARSSL_ERR_NET_WANT_WRITE)) {
-			ssl_free(sad->ssl);
-			sad->ssl = NULL;
+			ssl_free(sad->context);
+			sad->context = NULL;
 			result = -1;
 			break;
 		}
 		if (time(NULL) - start_time >= timeout) {
-			ssl_free(sad->ssl);
-			sad->ssl = NULL;
+			ssl_free(sad->context);
+			sad->context = NULL;
 			result = -2;
 			break;
 		}
@@ -273,17 +373,19 @@ int ssl_send(ssl_context *ssl, const char *buffer, unsigned int length) {
 
 /* Get information from client certificate
  */
-int get_client_crt_info(ssl_context *ssl, char *subject, char *issuer, int length) {
-	if (ssl->peer_cert == NULL) {
+int get_client_crt_info(ssl_context *context, char *subject, char *issuer, int length) {
+	if (context->session == NULL) {
+		return -1;
+	} else if (context->session->peer_cert == NULL) {
 		return -1;
 	}
 
-	if (x509parse_dn_gets(subject, length, &(ssl->peer_cert->subject)) == -1) {
+	if (x509parse_dn_gets(subject, length, &(context->session->peer_cert->subject)) == -1) {
 		return -1;
 	}
 	subject[length - 1] = '\0';
 
-	if (x509parse_dn_gets(issuer, length, &(ssl->peer_cert->issuer)) == -1) {
+	if (x509parse_dn_gets(issuer, length, &(context->session->peer_cert->issuer)) == -1) {
 		return -1;
 	}
 	issuer[length - 1] = '\0';
@@ -304,13 +406,12 @@ void ssl_close(ssl_context *ssl) {
  */
 void ssl_shutdown(void) {
 	rsa_free(&rsa);
+	ssl_cache_free(&cache);
 }
 
 #ifdef ENABLE_RPROXY
-int ssl_connect(ssl_context *ssl, ssl_session *ssn, int *sock) {
-	memset(ssn, 0, sizeof(ssl_session));
+int ssl_connect(ssl_context *ssl, int *sock, char *hostname) {
 	memset(ssl, 0, sizeof(ssl_context));
-
 	if (ssl_init(ssl) != 0) {
 		return -1;
 	}
@@ -322,8 +423,10 @@ int ssl_connect(ssl_context *ssl, ssl_session *ssn, int *sock) {
 	ssl_set_dbg(ssl, ssl_debug, stderr);
 	ssl_set_bio(ssl, net_recv, sock, net_send, sock);
 
+	if (hostname != NULL) {
+		ssl_set_hostname(ssl, hostname);
+	}
 	ssl_set_ciphersuites(ssl, ciphersuites);
-	ssl_set_session(ssl, 0, 0, ssn);
 
 	if (ssl_handshake(ssl) != 0) {
 		return -1;
@@ -335,11 +438,13 @@ int ssl_connect(ssl_context *ssl, ssl_session *ssn, int *sock) {
 int ssl_send_completely(ssl_context *ssl, const char *buffer, int size) {
 	int bytes_written, total_written = 0;
 
-	while (total_written < size) {
-		if ((bytes_written = ssl_write(ssl, (unsigned char*)buffer + total_written, size - total_written)) == -1) {
-			return -1;
-		} else {
+	if (size <= 0) {
+		return 0;
+	} else while (total_written < size) {
+		if ((bytes_written = ssl_write(ssl, (unsigned char*)buffer + total_written, size - total_written)) > 0) {
 			total_written += bytes_written;
+		} else if (bytes_written != POLARSSL_ERR_NET_WANT_WRITE) {
+			return -1;
 		}
 	}
 

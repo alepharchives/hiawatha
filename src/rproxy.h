@@ -48,6 +48,7 @@ typedef struct {
 	t_headerfield *headerfields;
 	char          *body;
 	int           body_length;
+	char          *remote_user;
 } t_rproxy_options;
 
 typedef struct {
@@ -55,7 +56,6 @@ typedef struct {
 #ifdef ENABLE_SSL
 	bool use_ssl;
 	ssl_context ssl;
-	ssl_session ssn;
 #endif
 } t_rproxy_webserver;
 
@@ -63,8 +63,9 @@ int init_rproxy_module(void);
 t_rproxy *rproxy_setting(char *line);
 bool rproxy_match(t_rproxy *rproxy, char *uri);
 bool rproxy_loop_detected(t_headerfield *headerfields);
-void init_rproxy_options(t_rproxy_options *options, int socket, t_ip_addr *client_ip, char *method,
-                         char *uri, t_headerfield *headerfields, char *body, int body_length);
+void init_rproxy_options(t_rproxy_options *options, int socket, t_ip_addr *client_ip,
+                         char *method, char *uri, t_headerfield *headerfields,
+                         char *body, int body_length, char *remote_user);
 int connect_to_webserver(t_rproxy *rproxy);
 int send_request_to_webserver(t_rproxy_webserver *webserver, t_rproxy_options *options,
                               t_rproxy *rproxy);

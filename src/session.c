@@ -107,6 +107,9 @@ static void clear_session(t_session *session) {
 #ifdef ENABLE_XSLT
 	session->xslt_file = NULL;
 #endif
+#ifdef ENABLE_DEBUG
+	session->current_task = NULL;
+#endif
 }
 
 /* Initialize a session-record.
@@ -764,7 +767,7 @@ void close_socket(t_session *session) {
 	if (session->socket_open) {
 #ifdef ENABLE_SSL
 		if (session->binding->use_ssl) {
-			ssl_close(&(session->ssl_data));
+			ssl_close(&(session->ssl_context));
 		}
 #endif
 		fsync(session->client_socket);

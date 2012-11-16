@@ -19,42 +19,42 @@ set(hiawatha_src
 	src/httpauth.c
 	src/libfs.c
 	src/libip.c
-	src/liblist.c 
-	src/libssl.c 
-	src/libstr.c 
-	src/log.c 
-	src/mimetype.c 
-	src/monitor.c 
+	src/liblist.c
+	src/libssl.c
+	src/libstr.c
+	src/log.c
+	src/mimetype.c
+	src/monitor.c
 	src/rproxy.c
-	src/send.c 
-	src/serverconfig.c 
-	src/session.c 
-	src/target.c 
+	src/send.c
+	src/serverconfig.c
+	src/session.c
+	src/target.c
 	src/tomahawk.c
-	src/toolkit.c 
-	src/userconfig.c 
-	src/xslt.c 
+	src/toolkit.c
+	src/userconfig.c
+	src/xslt.c
 )
 if(NOT ENABLE_SSL)
-	set(hiawatha_src ${hiawatha_src} polarssl/library/md5.c)
+	set(hiawatha_src ${hiawatha_src} polarssl/library/base64.c  polarssl/library/md5.c)
 endif()
 
 # php-fcgi sources
 set(php_fcgi_src
-	src/alternative.c 
-	src/libip.c 
-	src/liblist.c 
-	src/libstr.c 
-	src/php-fcgi.c 
-	src/userconfig.c 
+	src/alternative.c
+	src/libip.c
+	src/liblist.c
+	src/libstr.c
+	src/php-fcgi.c
+	src/userconfig.c
 )
 
 # ssi-cgi sources
 set(ssi_cgi_src
-	src/alternative.c 
+	src/alternative.c
 	src/libfs.c
-	src/libip.c 
-	src/liblist.c 
+	src/libip.c
+	src/liblist.c
 	src/libstr.c
 	src/ssi-cgi.c
 )
@@ -62,13 +62,13 @@ set(ssi_cgi_src
 # wigwam sources
 set(wigwam_src
 	src/alternative.c
-	src/libfs.c 
+	src/libfs.c
 	src/libip.c
-	src/libstr.c 
-	src/liblist.c 
-	src/toolkit.c 
+	src/libstr.c
+	src/liblist.c
+	src/toolkit.c
 	src/wigwam.c
-	polarssl/library/md5.c 
+	polarssl/library/md5.c
 )
 
 # configuration files

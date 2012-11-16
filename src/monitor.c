@@ -303,7 +303,7 @@ int monitor_stats(t_config *config, time_t now) {
 
 	}
 
-	snprintf(str, str_len, "server\t%ld\t%ld\t%d\n", 
+	snprintf(str, str_len, "server\t%ld\t%ld\t%d\n",
 		(long)timestamp_begin, (long)timestamp_end,
 		config->monitor_stats.simultaneous_connections);
 	str[str_len - 1] = '\0';

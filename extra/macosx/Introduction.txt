@@ -1,1 +1,0 @@
-Welcome to the Hiawatha webserver installer. You will be guided through the steps necessary to install this software.

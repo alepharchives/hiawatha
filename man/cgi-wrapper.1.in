@@ -40,10 +40,6 @@ Using "CGIwrapId = some_id" and "Wrap = some_id;~hugo;hugo" is the same as using
 Most of the parameters in cgi-wrapper.conf are already present in hiawatha.conf. The reason why they have to be specified again and why they are not being passed on by Hiawatha, is that when Hiawatha has a vulnerability, because of a bug in an external library of course :), the CGI-wrapper can't be used to execute every program on the disk. So it is done for a security reason.
 
 
-.SH CHROOT
-Tip: use the 'newroot' utility to copy/link binaries, such as 'bash' or 'php-cgi', to a chroot directory.
-
-
 .SH SEE ALSO
 The CGI-wrapper is part of the Hiawatha webserver. See hiawatha(1) for more information about Hiawatha.
 

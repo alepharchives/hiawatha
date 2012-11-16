@@ -20,7 +20,7 @@
 		letter-spacing:5px;
 	}
 
-	table.list {	
+	table.list {
 		width:100%;
 		padding:20px;
 		border-spacing:0;

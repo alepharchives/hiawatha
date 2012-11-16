@@ -44,7 +44,7 @@ function stop_php_fcgi {
 		echo -en "Stopping FastCGI server: "${GREEN}
 		${PHP_FCGI} -q -k
 		echo -e "PHP"${NORMAL}
-	else 
+	else
 		echo -e ${YELLOW}"FastCGI server is not running"${NORMAL}
 	fi
 }

@@ -27,6 +27,7 @@
 #include "client.h"
 #include "httpauth.h"
 #include "log.h"
+#include "polarssl/base64.h"
 #include "polarssl/md5.h"
 
 #define ha_ALLOWED   200
@@ -203,16 +204,18 @@ static char *get_A1(t_session *session, char *username, char *realm) {
 /* Basic HTTP authentication.
  */
 static int basic_http_authentication(t_session *session, char *auth_str) {
+	size_t auth_len;
 	int retval;
 	char *auth_user, *auth_passwd, *passwd, *encrypted, salt[3];
 
-	if ((auth_user = strdup(auth_str)) == NULL) {
+	auth_len = strlen(auth_str);
+	if ((auth_user = (char*)malloc(auth_len + 1)) == NULL) {
 		return ha_ERROR;
 	}
 
 	/* Decode authentication string
 	 */
-	if (decode_base64(auth_user) == false) {
+	if (base64_decode((unsigned char*)auth_user, &auth_len, (unsigned char*)auth_str, auth_len) != 0) {
 		register_wrong_password(session);
 		free(auth_user);
 		return ha_DENIED;

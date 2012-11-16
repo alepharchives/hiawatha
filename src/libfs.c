@@ -234,7 +234,7 @@ t_fsbool can_execute(char *file, uid_t uid, gid_t gid, t_groups *groups) {
 /* Create a file with the right ownership and accessrights.
  */
 void touch_logfile(char *logfile, mode_t mode, uid_t uid, gid_t gid) {
-	int fd; 
+	int fd;
 
 	if (logfile == NULL) {
 		return;

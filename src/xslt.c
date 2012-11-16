@@ -487,6 +487,10 @@ int show_index(t_session *session) {
 	char line[LINE_SIZE + 1];
 */
 
+#ifdef ENABLE_DEBUG
+	session->current_task = "show index";
+#endif
+
 #ifdef ENABLE_TOMAHAWK
 	increment_counter(COUNTER_INDEX);
 #endif

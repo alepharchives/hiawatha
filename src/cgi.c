@@ -238,7 +238,7 @@ void check_load_balancer(t_config *config, time_t now) {
 		/* Check if offline FastCGI servers are available again
 		 */
 		connect_to = fcgi_server->connect_to;
-		do { 
+		do {
 			if (connect_to->available == false) {
 				if ((sock = connect_to_fcgi_server(connect_to)) != -1) {
 					close(sock);

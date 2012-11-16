@@ -194,6 +194,7 @@ typedef struct type_host {
 	char            *no_extension_as;
 #ifdef ENABLE_XSLT
 	char            *show_index;
+	bool            use_xslt;
 #endif
 	bool            allow_dot_files;
 	bool            use_gz_file;
@@ -222,9 +223,13 @@ typedef struct type_host {
 #endif
 #ifdef ENABLE_SSL
     bool            require_ssl;
-#endif
-#ifdef ENABLE_XSLT
-	bool            use_xslt;
+	char            *key_cert_file;
+	char            *ca_cert_file;
+	char            *ca_crl_file;
+	rsa_context     *private_key;
+	x509_cert       *certificate;
+	x509_cert       *ca_certificate;
+	x509_crl        *ca_crl;
 #endif
 #ifdef ENABLE_RPROXY
 	t_rproxy        *rproxy;
@@ -252,9 +257,6 @@ typedef struct type_host {
 typedef struct type_config {
 	char          *mimetype_config;
 
-#ifdef ENABLE_CHROOT
-    char          *server_root;
-#endif
 	uid_t         server_uid;
 	gid_t         server_gid;
 	t_groups      groups;
@@ -333,6 +335,9 @@ typedef struct type_config {
 	char          *monitor_directory;
 	int           monitor_stats_interval;
 	t_monitor_srv_stats monitor_stats;
+#endif
+#ifdef ENABLE_SSL
+	int           min_ssl_version;
 #endif
 } t_config;
 

@@ -108,7 +108,7 @@ typedef struct type_session {
 	/* SSL
 	 */
 #ifdef ENABLE_SSL
-	ssl_context     ssl_data;
+	ssl_context     ssl_context;
 	ssl_session     ssl_session;
 #endif
 
@@ -119,6 +119,7 @@ typedef struct type_session {
 
 #ifdef ENABLE_DEBUG
 	int             thread_id;
+	char            *current_task;
 #endif
 } t_session;
 

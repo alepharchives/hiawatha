@@ -720,8 +720,13 @@ void read_password(char *buffer, int size) {
 	while (((c = getc(stdin)) != '\n') && (pos < size - 1)) {
 		buffer[pos++] = c;
 	}
-
 	buffer[pos] = '\0';
+
+	tty.c_lflag |= ECHO;
+	if (tcsetattr(STDOUT_FILENO, TCSADRAIN, &tty) == -1) {
+		printf("Terminal error.\n");
+		return;
+	}
 
 	printf("\n");
 }
@@ -764,9 +769,9 @@ void create_digest_password(char *username, char *realm) {
 
 void show_help(char *wigwam) {
 	printf("Usage: %s [options]\n", wigwam);
-	printf("Options: -b <username>: create password file entry for basic HTTP authentication\n");
+	printf("Options: -b <username>: create password file entry for basic HTTP authentication.\n");
 	printf("         -c <path>: path to where the configration files are located.\n");
-	printf("         -d <username> <realm>: create password file entry for digest HTTP authentication\n");
+	printf("         -d <username> <realm>: create password file entry for digest HTTP authentication.\n");
 	printf("         -h: show this information and exit.\n");
 	printf("         -q: don't print the test results.\n");
 #ifdef ENABLE_TOOLKIT

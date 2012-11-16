@@ -28,7 +28,6 @@ bool valid_uri(char *uri, bool allow_dot_files);
 int  url_encode(char *str, char **encoded);
 void url_decode(char *str);
 bool forbidden_chars_present(char *str);
-bool decode_base64(char *base64);
 int  str_replace(char *src, char *from, char *to, char **dst);
 bool min_strlen(char *str, int n);
 int  header_to_variable(char *header, char *variable, int size);
@@ -36,5 +35,6 @@ int  filesize2str(char *buffer, int len, off_t fsize);
 int  add_str(char **buffer, int *size, int extra_size, int *len, char *str);
 int  strpcmp(char *str, regex_t *regexp);
 void md5_bin2hex(unsigned char bin[16], char hex[33]);
+bool hostname_match(char *hostname, char *pattern);
 
 #endif

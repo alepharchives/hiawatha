@@ -6,6 +6,9 @@
 .SH NAME
 php-fcgi - start PHP as FastCGI daemon
 
+.br
+Warning, this tool is deprecated. Use php-fpm instead.
+
 
 .SH SYNOPSIS
 .B php-fcgi

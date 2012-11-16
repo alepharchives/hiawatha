@@ -78,7 +78,7 @@ int parse_ip(char *str, t_ip_addr *ip_addr) {
 		ip_addr->family = AF_INET6;
 		ip_addr->size = IPv6_LEN;
 #endif
-	} else {	
+	} else {
 		ip_addr->family = AF_UNSPEC;
 		ip_addr->size = 0;
 

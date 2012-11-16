@@ -126,7 +126,7 @@ static int send_to_client(t_session *session, const char *buffer, int size) {
 
 #ifdef ENABLE_SSL
 		if (session->binding->use_ssl) {
-			if ((bytes_sent = ssl_send(&(session->ssl_data), (char*)(buffer + total_sent), can_send)) <= 0) {
+			if ((bytes_sent = ssl_send(&(session->ssl_context), (char*)(buffer + total_sent), can_send)) <= 0) {
 				bytes_sent = -1;
 			}
 		} else
@@ -477,7 +477,7 @@ int send_code(t_session *session) {
 #ifdef ENABLE_SSL
 				if (session->binding->use_ssl) {
 					default_port = 443;
-				} else 
+				} else
 #endif
 					default_port = 80;
 

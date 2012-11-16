@@ -2,7 +2,7 @@ Format: 3.0 (native)
 Source: hiawatha
 Binary: hiawatha
 Architecture: any
-Version: <VERSION> 
+Version: <VERSION>
 Maintainer: Hugo Leisink <hugo@leisink.net>
 Homepage: http://www.hiawatha-webserver.org/
 Standards-Version: 3.6.2

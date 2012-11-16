@@ -1,9 +1,12 @@
 cmake_minimum_required(VERSION 2.8.4)
 project(Hiawatha C)
 
+# Compiler
+set(CMAKE_C_FLAGS "-Wall -Wextra")
+set(CMAKE_BUILD_TYPE "RelWithDebInfo")
+
 # Options
 option(ENABLE_CACHE    "Enable cache support in Hiawatha." on)
-option(ENABLE_CHROOT   "Enable chroot support in Hiawatha." off)
 option(ENABLE_DEBUG    "Enable debug information (for development only)." off)
 option(ENABLE_IPV6     "Enable IPv6 support in Hiawatha." on)
 option(ENABLE_MONITOR  "Enable support for the Hiawatha Monitor." off)
@@ -26,7 +29,7 @@ include(cmake/CopyIfNotExists.cmake)
 
 # Settings
 set(HIAWATHA_VERSION_MAJOR 8)
-set(HIAWATHA_VERSION_MINOR 5)
+set(HIAWATHA_VERSION_MINOR 6)
 set(HIAWATHA_VERSION_PATCH 0)
 string(TOLOWER ${CMAKE_PROJECT_NAME} PROJECT_NAME)
 if(${HIAWATHA_VERSION_PATCH} EQUAL 0)
@@ -42,10 +45,8 @@ set(LOG_DIR ${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/log/hiawatha CACHE STRING "Log d
 set(PID_DIR ${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/run CACHE STRING "PID directory")
 set(WEBROOT_DIR ${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/www/hiawatha CACHE STRING "Webroot directory")
 set(WORK_DIR ${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/lib/hiawatha CACHE STRING "Work directory")
-set(CMAKE_BUILD_TYPE "RelWithDebInfo")
-set(CMAKE_C_FLAGS "-Wall -Wextra")
 
-# Compiler options
+# Compiler directives
 check_include_file(crypt.h HAVE_CRYPT_H)
 check_include_file(arpa/inet.h HAVE_ARPA_INET_H)
 check_include_files("sys/types.h;netinet/in.h" HAVE_NETINET_IN_H)
@@ -132,9 +133,6 @@ install(TARGETS hiawatha php-fcgi wigwam DESTINATION ${CMAKE_INSTALL_SBINDIR})
 install(TARGETS cgi-wrapper DESTINATION ${CMAKE_INSTALL_SBINDIR}
 	PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE SETUID)
 install(TARGETS ssi-cgi DESTINATION ${CMAKE_INSTALL_BINDIR})
-if(ENABLE_CHROOT)
-	install(PROGRAMS extra/newroot DESTINATION ${CMAKE_INSTALL_SBINDIR})
-endif()
 
 foreach(configfile ${config_files})
 	install(CODE "copy_if_not_exists(\"${CMAKE_SOURCE_DIR}/${configfile}\" \"${CONFIG_DIR}\")")

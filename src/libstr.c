@@ -219,7 +219,7 @@ bool valid_uri(char *uri, bool allow_dot_files) {
 
 	// Deny 8.3 file format
 	if (last_pos >= 6) {
-		if ((*(uri + last_pos - 5) == '~') && (*(uri + last_pos - 4) >= '0') && 
+		if ((*(uri + last_pos - 5) == '~') && (*(uri + last_pos - 4) >= '0') &&
 			(*(uri + last_pos - 4) <= '9') && (*(uri + last_pos - 3) == '.')) {
 			return false;
 		}
@@ -274,9 +274,6 @@ int url_encode(char *str, char **encoded) {
 	c = str;
 	e = *encoded;
 	while (*c != '\0') {
-//		if (*c == ' ') {
-//			*e = '+';
-//		} else
 		if (char_needs_encoding(*c)) {
 			sprintf(e, "%%%02hhx", *c);
 			e += 2;
@@ -302,9 +299,7 @@ void url_decode(char *str) {
 	}
 
 	while (*str != '\0') {
-		if (*str == '+') {
-			*str = ' ';
-		} else if (*str == '%') {
+		if (*str == '%') {
 			if ((high = hex_to_int(*(str + 1))) != -1) {
 				if ((low = hex_to_int(*(str + 2))) != -1) {
 					str += 2;
@@ -343,66 +338,6 @@ bool forbidden_chars_present(char *str) {
 	}
 
 	return false;
-}
-
-/* Decode an base64 encoded string.
- */
-bool decode_base64(char *base64) {
-	bool retval = true, found;
-	const char *table = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-	int l, i, t, byte = 0, bit = 0;
-
-	if (base64 == NULL) {
-		return false;
-	}
-
-	l = strlen(base64);
-	for (i = 0; i < l; i++) {
-		if (*(base64 + i) != '=') {
-			found = false;
-			for (t = 0; t < 64; t++) {
-				if (*(base64 + i) == *(table + t)) {
-					switch (bit) {
-						case 0:
-							*(base64 + byte) = (t << 2);
-							break;
-						case 2:
-							*(base64 + byte) = (*(base64 + byte) & 192) | t;
-							break;
-						case 4:
-							*(base64 + byte) = (*(base64 + byte) & 240) | (t >> 2);
-							*(base64 + byte + 1) = (t << 6);
-							break;
-						case 6:
-							*(base64 + byte) = (*(base64 + byte) & 252) | (t >> 4);
-							*(base64 + byte + 1) = (t << 4);
-							break;
-					}
-					bit += 6;
-					if (bit >= 8) {
-						bit -= 8;
-						byte++;
-					}
-					found = true;
-					break;
-				}
-			}
-			if (found == false) {
-				retval = false;
-				break;
-			}
-		} else {
-			break;
-		}
-	}
-
-	if (bit <= 2) {
-		*(base64 + byte) = '\0';
-	} else {
-		*(base64 + byte + 1) = '\0';
-	}
-
-	return retval;
 }
 
 int str_replace(char *src, char *from, char *to, char **dst) {
@@ -546,4 +481,37 @@ void md5_bin2hex(unsigned char bin[16], char hex[33]) {
 		sprintf(&hex[2 * i], "%02x", bin[i]);
 	}
 	hex[32] = '\0';
+}
+
+bool hostname_match(char *hostname, char *pattern) {
+	size_t len, len_hostname;
+
+	if ((len_hostname = strlen(hostname)) == 0) {
+		return false;
+	}
+
+	if (strcmp(hostname, pattern) == 0) {
+		/* Exact match
+		 */
+		return true;
+	} else if (strncmp(pattern, "*.", 2) == 0) {
+		/* Wildcard in configuration
+		 */
+		if (strcmp(hostname, pattern + 2) == 0) {
+			/* Only domainname requested
+			 */
+			return true;
+		} else {
+			len = strlen(pattern);
+			if (len_hostname >= len) {
+				if (strcmp(hostname + len_hostname - len + 1, pattern + 1) == 0) {
+					/* Wildcard match for hostname
+					 */
+					return true;
+				}
+			}
+		}
+	}
+
+	return false;
 }

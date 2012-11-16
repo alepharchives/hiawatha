@@ -69,7 +69,7 @@ function stop_hiawatha {
 
 		rm -f ${PIDFILE}
 		echo -e "Hiawatha${NORMAL}"
-	else 
+	else
 		echo -e "${YELLOW}Hiawatha is not running${NORMAL}"
 	fi
 }

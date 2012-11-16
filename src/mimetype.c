@@ -148,7 +148,7 @@ char *get_mimetype(char *extension, t_mimetype *mime) {
 	t_extension *w_ext = NULL;
 
 	/* Convert file extension to mimetype.
-	 */ 
+	 */
 	if ((extension == NULL) || (mime == NULL)) {
 		return NULL;
 	} else if ((ext_lower = strlower(strdup(extension))) == NULL) {

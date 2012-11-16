@@ -201,8 +201,9 @@ bool rproxy_loop_detected(t_headerfield *headerfields) {
 
 /* Init reverse proxy options record
  */
-void init_rproxy_options(t_rproxy_options *options, int socket, t_ip_addr *client_ip, char *method,
-                         char *uri, t_headerfield *headerfields, char *body, int body_length) {
+void init_rproxy_options(t_rproxy_options *options, int socket, t_ip_addr *client_ip,
+	                     char *method, char *uri, t_headerfield *headerfields,
+	                     char *body, int body_length, char *remote_user) {
 	options->client_socket = socket;
 	options->client_ip = client_ip;
 	options->method = method;
@@ -210,6 +211,7 @@ void init_rproxy_options(t_rproxy_options *options, int socket, t_ip_addr *clien
 	options->headerfields = headerfields;
 	options->body = body;
 	options->body_length = body_length;
+	options->remote_user = remote_user;
 }
 
 /* Connect to the webserver
@@ -325,7 +327,10 @@ int send_request_to_webserver(t_rproxy_webserver *webserver, t_rproxy_options *o
 
 		if (strncasecmp(headerfield->data, "Connection:", 11) == 0) {
 			continue;
+		} else if (strncasecmp(headerfield->data, "X-Forwarded-User:", 17) == 0) {
+			continue;
 		}
+
 
 		if (send_to_webserver(webserver, headerfield->data, headerfield->length) == -1) {
 			return -1;
@@ -352,6 +357,18 @@ int send_request_to_webserver(t_rproxy_webserver *webserver, t_rproxy_options *o
 		if (sprintf(forwarded_for, "%s %s\r\n", hs_forwarded, ip_addr) == -1) {
 			return -1;
 		} else if (send_to_webserver(webserver, forwarded_for, strlen(forwarded_for)) == -1) {
+			return -1;
+		}
+	}
+
+	/* Send X-Forwarded-User
+	 */
+	if (options->remote_user != NULL) {
+		if (send_to_webserver(webserver, "X-Forwarded-User: ", 18) == -1) {
+			return -1;
+		} else if (send_to_webserver(webserver, options->remote_user, strlen(options->remote_user)) == -1) {
+			return -1;
+		} else if (send_to_webserver(webserver, "\r\n", 2) == -1) {
 			return -1;
 		}
 	}

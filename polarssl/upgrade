@@ -1,0 +1,12 @@
+#!/bin/sh
+
+rm -rf include
+rm -rf library
+
+svn co http://polarssl.org/repos/polarssl/polarssl/trunk trunk
+mv trunk/ChangeLog .
+mv trunk/include .
+mv trunk/library .
+rm -rf trunk
+
+rm -rf `find -type d | grep ".svn$"`

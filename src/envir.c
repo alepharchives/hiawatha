@@ -278,7 +278,7 @@ void set_environment(t_session *session, t_fcgi_buffer *fcgi_buffer) {
 
 #ifdef ENABLE_SSL
 	if (session->binding->use_ssl) {
-		if (get_client_crt_info(&(session->ssl_data), subject, issuer, SSL_VAR_SIZE) == 0) {
+		if (get_client_crt_info(&(session->ssl_context), subject, issuer, SSL_VAR_SIZE) == 0) {
 			add_to_environment(fcgi_buffer, "SSL_CLIENT_SUBJECT", subject);
 			add_to_environment(fcgi_buffer, "SSL_CLIENT_ISSUER", issuer);
 		}

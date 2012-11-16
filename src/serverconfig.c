@@ -22,6 +22,7 @@
 #endif
 #ifdef ENABLE_SSL
 #include "libssl.h"
+#include "polarssl/ssl.h"
 #endif
 #include <regex.h>
 #include "serverconfig.h"
@@ -70,6 +71,7 @@ static t_host *new_host(void) {
 	host->no_extension_as    = NULL;
 #ifdef ENABLE_XSLT
 	host->show_index         = NULL;
+	host->use_xslt           = false;
 #endif
 	host->allow_dot_files    = false;
 	host->use_gz_file        = false;
@@ -97,9 +99,13 @@ static t_host *new_host(void) {
 	host->alias              = NULL;
 #ifdef ENABLE_SSL
 	host->require_ssl        = false;
-#endif
-#ifdef ENABLE_XSLT
-	host->use_xslt           = false;
+	host->key_cert_file      = NULL;
+	host->ca_cert_file       = NULL;
+	host->ca_crl_file        = NULL;
+	host->private_key        = NULL;
+	host->certificate        = NULL;
+	host->ca_certificate     = NULL;
+	host->ca_crl             = NULL;
 #endif
 #ifdef ENABLE_RPROXY
 	host->rproxy             = NULL;
@@ -255,9 +261,6 @@ t_config *default_config(void) {
 	config->tomahawk_port      = NULL;
 #endif
 
-#ifdef ENABLE_CHROOT
-	config->server_root        = NULL;
-#endif
 	config->server_uid         = (uid_t)ID_NOBODY;
 	config->server_gid         = (gid_t)ID_NOBODY;
 	config->server_string      = "Hiawatha v"VERSION;
@@ -335,6 +338,9 @@ t_config *default_config(void) {
 	config->monitor_stats_interval = 60 * MINUTE;
 #endif
 
+#ifdef ENABLE_SSL
+	config->min_ssl_version    = SSL_MINOR_VERSION_0;
+#endif
 	return config;
 }
 
@@ -833,6 +839,22 @@ static bool system_setting(char *key, char *value, t_config *config) {
 		if ((config->mimetype_config = strdup(value)) != NULL) {
 			return true;
 		}
+#ifdef ENABLE_SSL
+	} else if (strcmp(key, "minsslversion") == 0) {
+		if (strcasecmp(value, "ssl3.0") == 0) { 
+			config->min_ssl_version = SSL_MINOR_VERSION_0;
+			return true;
+		} else if (strcasecmp(value, "tls1.0") == 0) { 
+			config->min_ssl_version = SSL_MINOR_VERSION_1;
+			return true;
+		} else if (strcasecmp(value, "tls1.1") == 0) { 
+			config->min_ssl_version = SSL_MINOR_VERSION_2;
+			return true;
+		} else if (strcasecmp(value, "tls1.2") == 0) { 
+			config->min_ssl_version = SSL_MINOR_VERSION_3;
+			return true;
+		}
+#endif
 #ifdef ENABLE_MONITOR
 	} else if (strcmp(key, "monitorserver") == 0) {
 		monitor_host = new_host();
@@ -918,14 +940,6 @@ static bool system_setting(char *key, char *value, t_config *config) {
 				}
 			}
 		}
-#ifdef ENABLE_CHROOT
-	} else if (strcmp(key, "serverroot") == 0) {
-		if (valid_directory(value)) {
-			if ((config->server_root = strdup(value)) != NULL) {
-				return true;
-			}
-		}
-#endif
 	} else if (strcmp(key, "serverstring") == 0) {
 		if ((strcmp(value, "none") == 0) || (strcmp(value, "null") == 0)) {
 			config->server_string = NULL;
@@ -1145,6 +1159,9 @@ static bool user_setting(char *key, char *value, t_host *host, t_tempdata **temp
 
 static bool host_setting(char *key, char *value, t_host *host) {
 	char *botname;
+#ifdef ENABLE_SSL
+	char *rest;
+#endif
 	t_denybotlist *deny_bot;
 	t_deny_body *deny_body;
 #ifdef ENABLE_RPROXY
@@ -1265,6 +1282,18 @@ static bool host_setting(char *key, char *value, t_host *host) {
 		if (parse_charlist(value, &(host->required_binding)) == 0) {
 			return true;
 		}
+#ifdef ENABLE_SSL
+	} else if (strcmp(key, "requiredca") == 0) {
+		split_string(value, &value, &rest, ',');
+		if ((host->ca_cert_file = strdup(value)) != NULL) {
+			if (rest != NULL) {
+				if ((host->ca_crl_file = strdup(rest)) == NULL) {
+					return false;
+				}
+			}
+			return true;
+		}
+#endif
 #ifdef ENABLE_RPROXY
 	} else if (strcmp(key, "reverseproxy") == 0) {
 		if ((rproxy = rproxy_setting(value)) != NULL) {
@@ -1285,6 +1314,12 @@ static bool host_setting(char *key, char *value, t_host *host) {
 		if (parse_yesno(value, &(host->secure_url)) == 0) {
 			return true;
 		}
+#ifdef ENABLE_SSL
+	} else if (strcmp(key, "sslcertfile") == 0) {
+		if ((host->key_cert_file = strdup(value)) != NULL) {
+			return true;
+		}
+#endif
 	} else if (strcmp(key, "timeforcgi") == 0) {
 		if ((host->time_for_cgi = str2int(value)) > TIMER_OFF) {
 			return true;
@@ -1988,7 +2023,7 @@ int read_user_configfile(char *configfile, t_host *host, t_tempdata **tempdata) 
 }
 
 t_host *get_hostrecord(t_host *host, char *hostname, t_binding *binding) {
-	size_t len, len_hostname;
+	size_t len_hostname;
 	int i;
 
 	if (hostname == NULL) {
@@ -2017,27 +2052,8 @@ t_host *get_hostrecord(t_host *host, char *hostname, t_binding *binding) {
 		}
 
 		for (i = 0; i < host->hostname.size; i++) {
-			if (strcmp(hostname, *(host->hostname.item + i)) == 0) {
-				/* Exact match
-				 */
+			if (hostname_match(hostname, *(host->hostname.item + i))) {
 				return host;
-			} else if (strncmp(*(host->hostname.item + i), "*.", 2) == 0) {
-				/* Wildcard in configuration
-				 */
-				if (strcmp(hostname, *(host->hostname.item + i) + 2) == 0) {
-					/* Only domainname requested
-					 */
-					return host;
-				} else {
-					len = strlen(*(host->hostname.item + i));
-					if (len_hostname >= len) {
-						if (strcmp(hostname + len_hostname - len + 1, *(host->hostname.item + i) + 1) == 0) {
-							/* Wildcard match for hostname
-							 */
-							return host;
-						}
-					}
-				}
 			}
 		}
 

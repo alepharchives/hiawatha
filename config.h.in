@@ -17,7 +17,6 @@
 /* Hiawatha modules
  */
 #cmakedefine ENABLE_CACHE ${ENABLE_CACHE}
-#cmakedefine ENABLE_CHROOT ${ENABLE_CHROOT}
 #cmakedefine ENABLE_DEBUG ${ENABLE_DEBUG}
 #cmakedefine ENABLE_IPV6 ${ENABLE_IPV6}
 #cmakedefine ENABLE_LOADCHECK ${ENABLE_LOADCHECK}

@@ -8,7 +8,7 @@ fi
 # Checking for tools required for building a Windows package
 #
 echo "-- Checking for required tools"
-tools="/usr/bin/cat /usr/bin/gcc /usr/bin/man /usr/bin/ps2pdf /usr/bin/unix2dos /usr/bin/zip"
+tools="/usr/bin/cmake /usr/bin/make /usr/bin/cat /usr/bin/gcc /usr/bin/man /usr/bin/ps2pdf /usr/bin/unix2dos /usr/bin/zip /usr/bin/cygrunsrv"
 missing=""
 for tool in ${tools}; do
 	if [ ! -f ${tool} ]; then
@@ -55,7 +55,7 @@ mkdir ${dir}/wwwroot
 cp hiawatha.exe ${dir}/Hiawatha/bin
 cp ssi-cgi.exe ${dir}/Hiawatha/bin
 cp wigwam.exe ${dir}/Hiawatha/bin
-cp polarssl/library/cygpolarssl-1.dll ${dir}/Hiawatha/bin
+cp polarssl/library/cygpolarssl-2.dll ${dir}/Hiawatha/bin
 strip ${dir}/Hiawatha/bin/*.exe
 
 files="cygcrypt-0.dll cyggcc_s-1.dll cygrunsrv.exe cygiconv-2.dll cygwin1.dll cygxml2-2.dll cygxslt-1.dll cygz.dll"

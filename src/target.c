@@ -86,6 +86,9 @@ int send_file(t_session *session) {
 	t_cached_object *cached_object;
 #endif
 
+#ifdef ENABLE_DEBUG
+	session->current_task = "send file";
+#endif
 #ifdef ENABLE_TOMAHAWK
 	increment_counter(COUNTER_FILE);
 #endif
@@ -467,6 +470,9 @@ int execute_cgi(t_session *session) {
 	t_cgi_info cgi_info;
 	pid_t cgi_pid = -1;
 
+#ifdef ENABLE_DEBUG
+	session->current_task = "execute CGI";
+#endif
 #ifdef ENABLE_TOMAHAWK
 	increment_counter(COUNTER_CGI);
 #endif
@@ -702,7 +708,7 @@ int execute_cgi(t_session *session) {
 						/* Add body content to cache buffer
 						 */
 						if ((cache_buffer != NULL) && (retval == 200)) {
-							if ((unsigned int)(cache_size + cgi_info.input_len) > session->config->cache_max_filesize) {
+							if ((off_t)(cache_size + cgi_info.input_len) > session->config->cache_max_filesize) {
 								free(cache_buffer);
 								cache_buffer = NULL;
 							} else {
@@ -846,7 +852,7 @@ int execute_cgi(t_session *session) {
 									}
 								}
 							}
-							
+
 							if (send_header(session) == -1) {
 								retval = rs_DISCONNECT;
 								break;
@@ -904,7 +910,7 @@ int execute_cgi(t_session *session) {
 								if (retval != 200) {
 									free(cache_buffer);
 									cache_buffer = NULL;
-								} else if ((unsigned int)(cache_size + cgi_info.input_len) > session->config->cache_max_filesize) {
+								} else if ((off_t)(cache_size + cgi_info.input_len) > session->config->cache_max_filesize) {
 									free(cache_buffer);
 									cache_buffer = NULL;
 								} else {
@@ -992,6 +998,11 @@ int handle_trace_request(t_session *session) {
 	size_t len;
 	char buffer[MAX_TRACE_HEADER + 1];
 	t_headerfield *header;
+
+
+#ifdef ENABLE_DEBUG
+	session->current_task = "handle TRACE";
+#endif
 
 	body_size = 3;
 	body_size += strlen(session->method) + session->uri_len;
@@ -1093,6 +1104,10 @@ int handle_put_request(t_session *session) {
 	char *range, *value, *rest, *buffer;
 	bool range_found;
 	struct flock file_lock;
+
+#ifdef ENABLE_DEBUG
+	session->current_task = "handle PUT";
+#endif
 
 	if (session->uploaded_file == NULL) {
 		return 500;
@@ -1275,6 +1290,10 @@ int handle_put_request(t_session *session) {
 int handle_delete_request(t_session *session) {
 	int auth_result;
 
+#ifdef ENABLE_DEBUG
+	session->current_task = "handle PUT";
+#endif
+
 	/* Access check
 	 */
 	switch (allow_alter(session)) {
@@ -1324,6 +1343,10 @@ int handle_delete_request(t_session *session) {
 int handle_xml_file(t_session *session) {
 	int handle;
 
+#ifdef ENABLE_DEBUG
+	session->current_task = "handle XML";
+#endif
+
 	if ((handle = open(session->file_on_disk, O_RDONLY)) == -1) {
 		if (errno == EACCES) {
 			log_error(session, fb_filesystem);
@@ -1364,10 +1387,15 @@ int proxy_request(t_session *session, t_rproxy *rproxy) {
 	int bytes_read, bytes_in_buffer = 0, result = 200, code;
 	bool first_line_read = false;
 
+#ifdef ENABLE_DEBUG
+	session->current_task = "proxy request";
+#endif
+
 	/* Intialize data structure
 	 */
-	init_rproxy_options(&options, session->client_socket, &(session->ip_address), session->method,
-	                    session->request_uri, session->headerfields, session->body, session->content_length);
+	init_rproxy_options(&options, session->client_socket, &(session->ip_address),
+	                    session->method, session->request_uri, session->headerfields,
+	                    session->body, session->content_length, session->remote_user);
 
 	session->keep_alive = false;
 
@@ -1380,7 +1408,7 @@ int proxy_request(t_session *session, t_rproxy *rproxy) {
 #ifdef ENABLE_SSL
 	webserver.use_ssl = rproxy->use_ssl;
 	if (webserver.use_ssl) {
-		if (ssl_connect(&(webserver.ssl), &(webserver.ssn), &(webserver.socket)) == -1) {
+		if (ssl_connect(&(webserver.ssl), &(webserver.socket), rproxy->hostname) == -1) {
 			close(webserver.socket);
 			return 503;
 		}

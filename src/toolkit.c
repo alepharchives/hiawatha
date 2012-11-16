@@ -13,10 +13,12 @@
 
 #ifdef ENABLE_TOOLKIT
 
+#include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/stat.h>
 #include "toolkit.h"
 #include "libstr.h"
 #include "libfs.h"
@@ -466,7 +468,7 @@ static int do_rewrite(char *url, regex_t *regexp, regmatch_t *pmatch, char *rep,
 
 void init_toolkit_options(t_toolkit_options *options, char *website_root, t_url_toolkit *toolkit,
 #ifdef ENABLE_SSL
-	                      bool use_ssl, 
+	                      bool use_ssl,
 #endif
 						  bool allow_dot_files, t_headerfield *headerfields) {
 	options->sub_depth = 0;
@@ -486,12 +488,12 @@ void init_toolkit_options(t_toolkit_options *options, char *website_root, t_url_
 int use_toolkit(char *url, char *toolkit_id, t_toolkit_options *options) {
 	t_url_toolkit *toolkit;
 	t_toolkit_rule *rule;
-	bool condition_oke, replaced = false;
+	bool condition_met, replaced = false;
 	int result, skip = 0;
-	t_fsbool is_dir;
 	char *file, *qmark;
 	regmatch_t pmatch[REGEXEC_NMATCH];
 	char *user_agent;
+	struct stat fileinfo;
 
 	if (options == NULL) {
 		return UT_ERROR;
@@ -505,7 +507,7 @@ int use_toolkit(char *url, char *toolkit_id, t_toolkit_options *options) {
 
 	rule = toolkit->toolkit_rule;
 	while (rule != NULL) {
-		condition_oke = false;
+		condition_met = false;
 
 		/* Skip lines
 		 */
@@ -521,13 +523,13 @@ int use_toolkit(char *url, char *toolkit_id, t_toolkit_options *options) {
 			case tc_none:
 				/* None
 				 */
-				condition_oke = true;
+				condition_met = true;
 				break;
 			case tc_match:
 				/* Match
 				 */
 				if (regexec(&(rule->pattern), url, REGEXEC_NMATCH, pmatch, 0) == 0) {
-					condition_oke = true;
+					condition_met = true;
 				}
 				break;
 			case tc_requesturi:
@@ -544,35 +546,37 @@ int use_toolkit(char *url, char *toolkit_id, t_toolkit_options *options) {
 					*qmark = '\0';
 				}
 				url_decode(file);
-				is_dir = is_directory(file);
-				free(file);
 
-				switch (rule->value) {
-					case IU_EXISTS:
-						if ((is_dir == yes) || (is_dir == no)) {
-							rule->flow = rule->conditional_flow;
-							condition_oke = true;
-						}
-						break;
-					case IU_ISFILE:
-						if (is_dir == no) {
-							rule->flow = rule->conditional_flow;
-							condition_oke = true;
-						}
-						break;
-					case IU_ISDIR:
-						if (is_dir == yes) {
-							rule->flow = rule->conditional_flow;
-							condition_oke = true;
-						}
-						break;
+				if (stat(file, &fileinfo) != -1) {
+					switch (rule->value) {
+						case IU_EXISTS:
+							if (S_ISDIR(fileinfo.st_mode) || S_ISREG(fileinfo.st_mode)) {
+								rule->flow = rule->conditional_flow;
+								condition_met = true;
+							}
+							break;
+						case IU_ISFILE:
+							if (S_ISREG(fileinfo.st_mode)) {
+								rule->flow = rule->conditional_flow;
+								condition_met = true;
+							}
+							break;
+						case IU_ISDIR:
+							if (S_ISDIR(fileinfo.st_mode)) {
+								rule->flow = rule->conditional_flow;
+								condition_met = true;
+							}
+							break;
+					}
 				}
+
+				free(file);
 				break;
 #ifdef ENABLE_SSL
 			case tc_usessl:
 				/* Client connections uses SSL?
 				 */
-				condition_oke = options->use_ssl;
+				condition_met = options->use_ssl;
 				break;
 #endif
 			case tc_oldbrowser:
@@ -580,17 +584,17 @@ int use_toolkit(char *url, char *toolkit_id, t_toolkit_options *options) {
 				 */
 				if ((user_agent = get_headerfield("User-Agent:", options->headerfields)) != NULL) {
 					if (strstr(user_agent, "MSIE 7") != NULL) {
-						condition_oke = true;
+						condition_met = true;
 					} else if (strstr(user_agent, "MSIE 6") != NULL) {
-						condition_oke = true;
+						condition_met = true;
 					}
 				}
 				break;
 		}
 
-		/* Condition not oke
+		/* Condition not met
 		 */
-		if (condition_oke == false) {
+		if (condition_met == false) {
 			rule = rule->next;
 			continue;
 		}

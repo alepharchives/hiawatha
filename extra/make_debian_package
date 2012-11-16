@@ -8,7 +8,7 @@ fi
 # Checking for packages required for building a Debian package
 #
 echo "-- Checking for required packages"
-packages="gcc libc6-dev dpkg-dev debhelper fakeroot libxml2-dev libxslt1-dev zlib1g-dev"
+packages="make gcc libc6-dev dpkg-dev debhelper fakeroot libxml2-dev libxslt1-dev zlib1g-dev"
 missing=""
 for package in ${packages}; do
 	installed=`dpkg -l ${package} | tail -1 | cut -b1-2`

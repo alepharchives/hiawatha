@@ -521,7 +521,7 @@ int main(int argc, char *argv[]) {
 		} else if (strcmp(argv[i], "-q") == 0) {
 			quiet = true;
 		} else if (strcmp(argv[i], "-v") == 0) {
-			printf("PHP-FastCGI v"VERSION"\n");
+			printf("PHP-FastCGI v"VERSION". This tool is deprecated. Use php-fpm instead.\n");
 			return EXIT_SUCCESS;
 		} else {
 			fprintf(stderr, "Unknown option. Use '-h' for help.\n");

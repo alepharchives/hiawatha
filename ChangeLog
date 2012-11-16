@@ -1,3 +1,16 @@
+hiawatha (8.6) stable; urgency=low
+
+  * PolarSSL updated to version 1.2. Added support for TLS 1.2 and
+    secure renegotiation.
+  * Added support for Server Name Indication.
+  * MinSSLversion option added.
+  * ServerRoot option removed.
+  * Improved MacOS X package building script.
+  * Marked php-fcgi as deprecated. Use php-fpm instead.
+  * Small bugfixes and improvements.
+
+ -- Hugo Leisink <hugo@leisink.net>  Wed, 31 Oct 2012 19:10:32 +0100
+
 hiawatha (8.5) stable; urgency=low
 
   * Improved Reverse Proxy.
@@ -7,9 +20,9 @@ hiawatha (8.5) stable; urgency=low
     authentication but user not in right group.
   * Small improvements.
   * Bugfix: replaced select() with poll() to prevent crashes in case of
-    large amount of simultaneous connections.
+    large amount of simultaneous connections. Thanks to Peter Bex.
 
- -- Hugo Leisink <hugo@leisink.net>  Mon,  3 Sep 2012 19:39:12 +0200
+ -- Hugo Leisink <hugo@leisink.net>  Sun,  9 Sep 2012 11:39:12 +0200
 
 hiawatha (8.4) stable; urgency=low
 
@@ -36,7 +49,7 @@ hiawatha (8.3) stable; urgency=low
 
   * ReverseProxy option added.
   * PolarSSL updated to version 1.1.3.
- 
+
  -- Hugo Leisink <hugo@leisink.net>  Wed, 23 May 2012 18:11:56 +0200
 
 hiawatha (8.2) stable; urgency=low
@@ -139,7 +152,7 @@ hiawatha (7.4) stable; urgency=medium
   * Bugfix: usage of HideProxy caused Hiawatha to refuse new connections
     after ConnectionsTotal connections.
   * Bugfix: memory leak in XSLT module.
- 
+
  -- Hugo Leisink <hugo@leisink.net>  Mon,  8 Nov 2010 20:58:54 +0100
 
 hiawatha (7.3) stable; urgency=low
@@ -448,7 +461,7 @@ hiawatha (5.10) stable; urgency=low
   * Improved CGI support for Windows version (Cygwin).
   * Throttle configuration merged into httpd.conf.
   * EnablePathInfo option added.
-  * Workaround for syntax-bug in php-fcgi.conf (comma in GIDs conflicts 
+  * Workaround for syntax-bug in php-fcgi.conf (comma in GIDs conflicts
     with comma before PHP configuration file).
   * Improved ErrorHandler.
   * Small improvements.
@@ -501,7 +514,7 @@ hiawatha (5.7) stable; urgency=medium
  -- Hugo Leisink <hugo@leisink.net>  Sun,  4 Mar 2007 08:43:28 +0100
 
 hiawatha (5.6) stable; urgency=low
-  
+
   * Chrooted FastCGI server support.
   * Configuration reading routine rewritten. Angle bracket sections
     are no longer available. Only curly bracket sections can be used.
@@ -716,7 +729,7 @@ hiawatha (3.4) stable; urgency=low
   * BSD autoconf errors fixed (Thanks to Sander Niemeijer).
 
  -- Hugo Leisink <hugo@leisink.net>  Sun, 23 Jan 2005 22:36:13 +0100
- 
+
 hiawatha (3.3) stable; urgency=low
 
   * CGIhandler option added (PHPextension, PHPprogram and ExecutePHP options
@@ -940,7 +953,7 @@ hiawatha (1.6.1) stable; urgency=medium
  -- Hugo Leisink <hugo@leisink.net>  Tue, 26 Jan 2004 10:13:26 +0100
 
 hiawatha (1.6) stable; urgency=low
-  
+
   * URL checked for special characters (%20 = ' ', etc).
   * Remarks on every line in configuration file allowed.
   * Added some MIME-types.

@@ -9,9 +9,13 @@ wigwam - check the Hiawatha webserver configuration for non-critical errors
 
 .SH SYNOPSIS
 .B wigwam
+-b <username>: create password file entry for basic HTTP authentication.
+.br
 [-c <path>] [-h] [-t [<toolkit_id> ...]] [-q] [-v]
 .br
 -c path: path to where the configrationfiles are located.
+.br
+-d <username> <realm>: create password file entry for digest HTTP authentication.
 .br
 -h: show help and exit.
 .br
@@ -30,7 +34,7 @@ Wigwam is a configuration validation tool for the Hiawatha webserver. Use it to 
 With the option -t, you can use Wigwam to test your URL toolkit rules. When testing URL toolkit rules, you should only enter the part after the hostname in the URL. For example, if you want to test the URL "http://www.mydomain.com/index.php?key=value", you should enter "/index.php?key=value". A result shown as "old: <URL>" means nothing has been changed. When a toolkit rule has been applied, the result is shown as "new: <URL>".
 .br
 
-To use URL toolkit testing, Hiawatha must have been compiled without --disable-toolkit. Use 'hiawatha -v' for compile information.
+To use URL toolkit testing, Hiawatha must no have been compiled with -DENABLE_TOOLKIT=off. Use 'hiawatha -v' for compile information.
 
 
 .SH SEE ALSO

@@ -1,5 +1,7 @@
 # PHP FastCGI configuration
 
+# !! Warning, this tool is deprecated. Use php-fpm instead.
+
 # Path to PID-file.
 # PidFile = <filename>
 #

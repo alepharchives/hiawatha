@@ -124,7 +124,7 @@ Size of Hiawatha's internal file cache. Maximum is 50 (megabytes).
 Default = 10, example: CacheSize = 15
 .br
 
-(requires that Hiawatha was not compiled with --disable-cache)
+(requires that Hiawatha was not compiled with -DENABLE_CACHE=off)
 .TP
 .B CacheMaxFilesize = <size in kilobytes>
 Maximum size of a file Hiawatha will store in its internal cache.
@@ -132,7 +132,7 @@ Maximum size of a file Hiawatha will store in its internal cache.
 Default = 256, example: CacheMaxFilesize = 128
 .br
 
-(requires that Hiawatha was not compiled with --disable-cache)
+(requires that Hiawatha was not compiled with -DENABLE_CACHE=off)
 .TP
 .B CacheMinFilesize = <size in bytes>
 Minimum size of a file Hiawatha will store in its internal cache.
@@ -140,7 +140,7 @@ Minimum size of a file Hiawatha will store in its internal cache.
 Default = 1, example: CacheMaxFilesize = 512
 .br
 
-(requires that Hiawatha was not compiled with --disable-cache)
+(requires that Hiawatha was not compiled with -DENABLE_CACHE=off)
 .TP
 .B CGIextension = <extension>[, <extension>, ...]
 Default extension of a CGI program.
@@ -222,6 +222,11 @@ The location of the mimetype configurationfile. It the path is omitted, Hiawatha
 .br
 Default = mimetype.conf, example: MimetypeConfig = /etc/mime.types
 .TP
+.B MinSSLversion = SSL3.0|TLS1.0|TLS1.1|TLS1.2
+Specify the minimum SSL version Hiawatha accepts for HTTPS connections.
+.br
+Default = SSL3.0, Example: MinSSLversion = TLS1.1
+.TP
 .B MonitorServer = <ip-address>
 Specify the IP address of the monitor server. This enables logging of statistical information.
 .br
@@ -264,14 +269,6 @@ The userid and groupid(s) the server will change to. If only a userid is specifi
 .br
 Default = 65534:65534, example: ServerId = www-data
 .TP
-.B ServerRoot = <directory>
-Rootdirectory for the webserver. Hiawatha will chroot() to this directory after reading the configurationfile and writing the PID file. Cannot be used in combination with UserWebsites. Only use this option when you know what you are doing!
-.br
-Example: ServerRoot = /var/www
-.br
-
-(requires that Hiawatha was compiled with -DENABLE_CHROOT=on)
-.TP
 .B ServerString = <text>
 The text behind 'Server:' in the HTTP header of a response. Use 'none' to completely remove the Server string from the HTTP header.
 
@@ -295,8 +292,8 @@ Example: Throttle = audio/mpeg:30
 .br
          Throttle = .mp:50
 .TP
-.B Tomahawk = <portnumber>, <MD5 hash of password>
-The port and the password for Tomahawk. You can use telnet to connect to Tomahawk (localhost:<portnumber>). Once connected to Tomahawk, type 'help' for more information.
+.B Tomahawk = <port number>, <MD5 hash of password>
+The port and the password for Tomahawk. You can use telnet to connect to Tomahawk (localhost:<port number>). Once connected to Tomahawk, type 'help' for more information.
 .br
 Example: Tomahawk = 81,41d0c72bd73afaa2c207064d81d5a3d9
 .br
@@ -325,10 +322,10 @@ Default = no, example: WrapUserCGI = yes
 
 .\" ==========[ Binding configuration ]========================================
 .SH BINDING CONFIGURATION
-A binding is where a client connects to (a port opened on an interface).
+A binding is where a client can connect to (a port on a network interface).
 .TP
 .B BindingId = <binding_id>
-The binding ID can be used to bind a virtual host to an interface (see RequiredBinding for more information).
+The binding ID can be used to hook a virtual host to a binding (see RequiredBinding for more information).
 .br
 Example: BindingId = LAN
 .TP
@@ -342,8 +339,8 @@ Enable the TRACE HTTP request method for this binding.
 .br
 Default = no, example: EnableTRACE = yes
 .TP
-.B Interface =  <ip-address>
-The address of an interface that must be binded.
+.B Interface =  <IP address>
+The IP address of the interface that must be binded.
 .br
 Default = 0.0.0.0 (IPv4), example: Interface = 192.168.0.1
 .TP
@@ -362,8 +359,8 @@ The maximum size of a PUT request entity in megabytes the webserver is allowed t
 .br
 Default = 1, example: MaxUploadSize = 15
 .TP
-.B Port = <portnumber>
-The portnumber that will be used for the binding. This is a required option.
+.B Port = <port number>
+The port number that will be used for the binding. This is a required option.
 .br
 Example: Port = 80
 .TP
@@ -373,7 +370,7 @@ Use the CA certificates in this file to authenticate users. Users without a cert
 Example: RequiredCA = /etc/ssl/cacert.pem, /etc/ssl/cacrl.pem
 .br
 
-(requires that Hiawatha was not compiled with --disable-ssl)
+(requires that Hiawatha was not compiled with -DENABLE_SSL=off)
 .TP
 .B SSLcertFile = <SSL private key and certificate file>
 Encrypt the connections of the current binding with the SSL private key and certificate in the specified file. Intermediate certificates also go in this file. Make sure the order matches the SSL chain order: host certificate first, CA certificate last.
@@ -381,7 +378,7 @@ Encrypt the connections of the current binding with the SSL private key and cert
 Example: SSLcertFile = my_domain.pem
 .br
 
-(requires that Hiawatha was not compiled with --disable-ssl)
+(requires that Hiawatha was not compiled with -DENABLE_SSL=off)
 .TP
 .B TimeForRequest = [<time1>, ]<time2>
 Maximum time in seconds for a client to send its HTTP request. time1 is for the first request, time2 is for the following requests (Keep-Alive time). If time2 is omitted, time1 is used for all requests.
@@ -493,7 +490,7 @@ If the requested file has no extension, treat it as if the extension was equal t
 Example: NoExtension = cgi
 .TP
 .B PasswordFile = ((basic|digest):<passwordfile>)|none[,<groupfile>]
-File which contains the username and password necessary to access this directory. You can create or updated this file with htpasswd(1). The format of the lines in the passwordfile for Basic HTTP authentication is:
+File which contains the username and password necessary to access this directory. You can create or updated this file with wigwam(1). The format of the lines in the passwordfile for Basic HTTP authentication is:
 .br
 	<username>:<password encrypted with crypt(3)>[:user defined fields: ...]
 .br
@@ -523,9 +520,12 @@ Prevent cross-site scripting via the URL by replacing a less-then, greater-then,
 Default = no, example: PreventXSS = yes
 .TP
 .B RequiredBinding = <binding_id>[, <binding_id>, ...]
-Bind a virtual host to one or more interfaces (see chapter BINDING CONFIGURATION for more information). The virtual host can now only be reached via the binded interfaces.
+By default, a virtual host can be visited via all bindings. Via this opion, you can specify via which bindings a virtual host can be visited (see chapter BINDING CONFIGURATION for more information).
 .br
 Example: RequiredBinding = LAN
+.TP
+.B RequiredCA = ...
+Use this option if you want to make use of the SNI capabilities of Hiawatha. See the RequiredCA option in the BINDING CONFIGURATION chapter for more information.
 .TP
 .B RequiredGroup = <groupname>[, <groupname>, ...]
 The <groupname> is the name of the group a user must be a member of to have access (see PasswordFile for more information).
@@ -538,7 +538,7 @@ Specify that a domain must be visited with a SSL connection. If it is visited vi
 Default = no, example: RequireSSL = yes
 .br
 
-(requires that Hiawatha was not compiled with --disable-ssl)
+(requires that Hiawatha was not compiled with -DENABLE_SSL=off)
 .TP
 .B ReverseProxy <pattern> http[s]://<hostname>[:<port>][/<path>]
 Forward the request with URLs that match the regular expression <pattern> to another webserver, where <path> is placed before the original URL. Note that the reverse proxy selection comes before the URL toolkit handling. When <hostname> is an IP address, the value of the Host HTTP header is unchanged. Otherwise, it is replaced with the value of <hostname>.
@@ -561,7 +561,10 @@ Return a directory listing in HTML format for a directory request when the start
 Default = no, example: ShowIndex = /etc/hiawatha/index.xslt
 .br
 
-(requires that Hiawatha was not compiled with --disable-xslt)
+(requires that Hiawatha was not compiled with -DENABLE_XSLT=off)
+.TP
+.B SSLcertFile = ...
+Use this option if you want to make use of the SNI capabilities of Hiawatha. See the SSLcertFile option in the BINDING CONFIGURATION chapter for more information.
 .TP
 .B StartFile = <filename>
 The file which will be send to the browser when a directory is requested.
@@ -593,7 +596,7 @@ Perform special operations, like rewriting via regular expressions, on the URL (
 .br
 Example: UseToolkit = my_toolkit
 
-(requires that Hiawatha was not compiled with --disable-toolkit)
+(requires that Hiawatha was not compiled with -DENABLE_TOOLKIT=off)
 .TP
 .B UseXSLT = yes|no
 Activate XSL transformations (see chapter XSLT for more information).
@@ -601,7 +604,7 @@ Activate XSL transformations (see chapter XSLT for more information).
 Default = no, example: UseXSLT = yes
 .br
 
-(requires that Hiawatha was not compiled with --disable-xslt)
+(requires that Hiawatha was not compiled with -DENABLE_XSLT=off)
 .TP
 .B VolatileObject = <filename with full path>
 This file will be completely read into the memory before it is send. Because of this, the file can not be greater than 1MB. Use this option for files that change rapidly, such as webcam pictures.
@@ -693,7 +696,7 @@ and
 .SH FASTCGI CONFIGURATION
 This chapter explains how to use one or more FastCGI servers. Use the 'php-fcgi' tool to start PHP as a FastCGI daemon.
 .TP
-.B ConnectTo = <ip-address>:<portnumber>|<path>[, <ip-address>:<portnumber>|<path>, ...]
+.B ConnectTo = <ip-address>:<port number>|<path>[, <ip-address>:<port number>|<path>, ...]
 The IP-address and TCP port or UNIX socket Hiawatha must connect to to reach the FastCGI server.
 .br
 Example: ConnectTo = 127.0.0.1:2004 (IPv4)
@@ -722,7 +725,7 @@ Default = 15, example: SessionTimeout = 30
 
 .\" ==========[ URL toolkit configuration ]====================================
 .SH URL TOOLKIT
-How to use the URL toolkit is explained in this chapter. To use URL toolkits, Hiawatha should not have been compiled with --disable-toolkit.
+How to use the URL toolkit is explained in this chapter. To use URL toolkits, Hiawatha should not have been compiled with -DENABLE_TOOLKIT=off.
 .TP
 .B Call <toolkit_id>
 Execute toolkit section <toolkit_id> and continue in the current section.
@@ -826,7 +829,7 @@ Perform an action when the client is connection via a SSL secured connection.
 .br
 .B Skip <lines>
 .br
-
+	Skip the next following <number> lines (ToolkitId excluded).
 
 .TP
 The original URL is stored in the environment variable SCRIPT_URL. Before using URL toolkit rules, use the tool 'wigwam' to verify the result of your rules (see wigwam(1) for more information).
@@ -871,7 +874,7 @@ If a XML file is requested, Hiawatha can do a XSL transformation when a XSLT she
 
 .\" ==========[ CGI cache ]====================================================
 .SH CGI OUTPUT CACHE
-Hiawatha can cache the output of CGI applications. When and for how long is determined by the application itself. It can use the following CGI headers to control the caching of its output. This feature requires that Hiawatha was not compiled with --disable-cache.
+Hiawatha can cache the output of CGI applications. When and for how long is determined by the application itself. It can use the following CGI headers to control the caching of its output. This feature requires that Hiawatha was not compiled with -DENABLE_CACHE=off.
 .TP
 .B X-Hiawatha-Cache: <seconds>
 .br
@@ -931,7 +934,7 @@ Specify the mimetypes of files in /etc/hiawatha/mimetypes.conf.
 Example: image/jpeg jpg jpeg jpe
 
 .SH EXTRA
-.TP 
+.TP
 .B gzip Content-Encoding support
 Hiawatha has gzip Content-Encoding support is a unique way. Other webservers with gzip Content-Encoding support will compress a file everytime this file is requested, over and over again. Compression is only usefull for large files. Since most of the large files on a website are JPEG files and JPEG files are hard to compress, most of the compression done by such webservers is a waste of CPU power.
 
@@ -949,7 +952,7 @@ Close all open logfiles.
 Unban all IP addresses.
 .TP
 .B USR2
-Clear the internal cache (requires that Hiawatha was not compiled with --disable-cache).
+Clear the internal cache (requires that Hiawatha was not compiled with -DENABLE_CACHE=off).
 
 .SH FILES
 .B /usr/sbin/hiawatha

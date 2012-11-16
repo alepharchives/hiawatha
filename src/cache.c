@@ -153,7 +153,7 @@ t_cached_object *add_file_to_cache(t_session *session, char *file) {
 	}
 
 	if ((fd = open(file, O_RDONLY)) != -1) {
-		while ((unsigned int)bytes_total < size) {
+		while ((off_t)bytes_total < size) {
 			if ((bytes_read = read(fd, object->data + bytes_total, size - bytes_total)) == -1) {
 				if (errno != EINTR) {
 					free(object->data);

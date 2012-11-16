@@ -672,6 +672,10 @@ void print_client_list(FILE *fp) {
 		while (client != NULL) {
 			if ((client->remove_deadline == TIMER_OFF) || (now < client->remove_deadline)) {
 				fprintf(fp, "  Client ID   : %d\n", client->session->client_id);
+#ifdef ENABLE_DEBUG
+				fprintf(fp, "  Current task: %s\n", client->session->current_task);
+#endif
+
 				if (inet_ntop(client->session->ip_address.family, &(client->session->ip_address.value), ip_address, MAX_IP_STR_LEN) != NULL) {
 					fprintf(fp, "  IP-address  : %s\n", ip_address);
 				}

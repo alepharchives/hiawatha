@@ -107,9 +107,6 @@ char *version_string = "Hiawatha v"VERSION
 #ifdef ENABLE_CACHE
 	", cache"
 #endif
-#ifdef ENABLE_CHROOT
-	", chroot"
-#endif
 #ifdef ENABLE_DEBUG
 	", debug"
 #endif
@@ -173,7 +170,7 @@ t_cgi_type check_target_is_cgi(t_session *session) {
 	if ((session->fcgi_server = find_fcgi_server(session->config->fcgi_server, session->toolkit_fastcgi)) != NULL) {
 		session->cgi_type = fastcgi;
 		session->host->execute_cgi = true;
-	} else 
+	} else
 #endif
 	if ((session->fcgi_server = fcgi_server_match(session->config->fcgi_server, &(session->host->fast_cgi), session->extension)) != NULL) {
 		session->cgi_type = fastcgi;
@@ -389,6 +386,10 @@ int serve_client(t_session *session) {
 	t_rproxy *rproxy;
 #endif
 
+#ifdef ENABLE_DEBUG
+	session->current_task = "fetch & parse request";
+#endif
+
 	if ((result = fetch_request(session)) != 200) {
 		session->request_method = GET;
 		return result;
@@ -396,6 +397,10 @@ int serve_client(t_session *session) {
 		session->request_method = GET;
 		return result;
 	}
+
+#ifdef ENABLE_DEBUG
+	session->current_task = "serve client";
+#endif
 
 	session->time = time(NULL);
 
@@ -832,6 +837,10 @@ void handle_timeout(t_session *session) {
 /* Request has been handled, handle the return code.
  */
 void handle_request_result(t_session *session, int result) {
+#ifdef ENABLE_DEBUG
+	session->current_task = "handle request result";
+#endif
+
 	if (result == -1) switch (session->error_cause) {
 		case ec_MAX_REQUESTSIZE:
 			log_system(session, "Maximum request size reached");
@@ -990,6 +999,10 @@ void connection_handler(t_session *session) {
 #ifdef ENABLE_MONITOR
 	int connections;
 
+#ifdef ENABLE_DEBUG
+	session->current_task = "thread started";
+#endif
+
 	connections = ++open_connections;
 	if (session->config->monitor_enabled) {
 		if (connections > session->config->monitor_stats.simultaneous_connections) {
@@ -1002,15 +1015,17 @@ void connection_handler(t_session *session) {
 	if (session->binding->use_ssl) {
 		timeout = session->kept_alive == 0 ? session->binding->time_for_1st_request : session->binding->time_for_request;
 
-		sad.ssl            = &(session->ssl_data);
-		sad.session        = &(session->ssl_session);
+		sad.context        = &(session->ssl_context);
 		sad.client_fd      = &(session->client_socket);
 		sad.private_key    = session->binding->private_key;
 		sad.certificate    = session->binding->certificate;
 		sad.ca_certificate = session->binding->ca_certificate;
 		sad.ca_crl         = session->binding->ca_crl;
 
-		switch (ssl_accept(&sad, timeout)) {
+#ifdef ENABLE_DEBUG
+		session->current_task = "ssl accept";
+#endif
+		switch (ssl_accept(&sad, timeout, session->config->min_ssl_version)) {
 			case -2:
 				handle_timeout(session);
 				break;
@@ -1027,6 +1042,10 @@ void connection_handler(t_session *session) {
 			result = serve_client(session);
 			handle_request_result(session, result);
 
+#ifdef ENABLE_DEBUG
+			session->current_task = "request done";
+#endif
+
 			if (session->socket_open) {
 				send_buffer(session, NULL, 0); /* Flush the output-buffer */
 			}
@@ -1040,6 +1059,9 @@ void connection_handler(t_session *session) {
 			}
 #endif
 			reset_session(session);
+#ifdef ENABLE_DEBUG
+			session->current_task = "session reset";
+#endif
 
 			if ((session->kept_alive > 0) && (session->config->ban_on_flooding > 0)) {
 				if (client_is_flooding(session)) {
@@ -1056,6 +1078,9 @@ void connection_handler(t_session *session) {
 				}
 			}
 		} while (session->keep_alive && session->socket_open);
+#ifdef ENABLE_DEBUG
+		session->current_task = "session done";
+#endif
 
 		destroy_session(session);
 		close_socket(session);
@@ -1329,6 +1354,7 @@ int accept_connection(t_binding *binding, t_config *config) {
 	}
 #ifdef ENABLE_DEBUG
 	session->thread_id = thread_id++;
+	session->current_task = "new";
 #endif
 	session->config = config;
 	session->binding = binding;
@@ -1496,6 +1522,9 @@ int run_server(t_settings *settings) {
 	struct stat        status;
 	mode_t             access_rights;
 #endif
+#ifdef ENABLE_SSL
+	t_host             *host;
+#endif
 
 	config = default_config();
 	if (chdir(settings->config_dir) == -1) {
@@ -1529,6 +1558,8 @@ int run_server(t_settings *settings) {
 #ifdef ENABLE_SSL
 	ssl_initialize(config->system_logfile);
 
+	/* Load private keys and certificate for bindings
+	 */
 	binding = config->binding;
 	while (binding != NULL) {
 		if (binding->use_ssl) {
@@ -1549,6 +1580,39 @@ int run_server(t_settings *settings) {
 		}
 		binding = binding->next;
 	}
+
+	host = config->first_host;
+	while (host != NULL) {
+		/* Load private key and certificates for virtual hosts
+		 */
+		if (host->key_cert_file != NULL) {
+			if (ssl_load_key_cert(host->key_cert_file, &(host->private_key), &(host->certificate)) != 0) {
+				return -1;
+			}
+		}
+		if (host->ca_cert_file != NULL) {
+			if (ssl_load_ca_cert(host->ca_cert_file, &(host->ca_certificate)) != 0) {
+				return -1;
+			}
+			if (host->ca_crl_file != NULL) {
+				if (ssl_load_ca_crl(host->ca_crl_file, &(host->ca_crl)) != 0) {
+					return -1;
+				}
+			}
+		}
+
+		/* Initialize Server Name Indication
+		 */
+		if ((host->private_key != NULL) && (host->certificate != NULL)) {
+			if (ssl_register_sni(&(host->hostname), host->private_key, host->certificate,
+			                     host->ca_certificate, host->ca_crl) == -1) {
+				return -1;
+			}
+		}
+
+		host = host->next;
+	}
+
 #endif
 
 #ifdef ENABLE_TOMAHAWK
@@ -1578,36 +1642,12 @@ int run_server(t_settings *settings) {
 				}
 				break;
 			default:
-				log_pid(config, pid);
+				log_pid(config, pid, config->server_uid);
 				return 0;
 		}
 	} else {
-		log_pid(config, getpid());
+		log_pid(config, getpid(), config->server_uid);
 	}
-
-#ifdef ENABLE_CHROOT
-	/* Change server root
-	 */
-	if (config->server_root != NULL) {
-		do {
-			if (chdir(config->server_root) != -1) {
-				if (chroot(config->server_root) != -1) {
-					break;
-				}
-			}
-			fprintf(stderr, "\nError while changing root to %s!\n", config->server_root);
-			return -1;
-		} while (false);
-
-#ifdef CYGWIN
-	} else if (chdir("/cygdrive/c") == -1) {
-#else
-	} else if (chdir("/") == -1) {
-#endif
-		fprintf(stderr, "\nError while changing to root directory!\n");
-		return -1;
-	}
-#endif
 
 	/* Create work directory
 	 */
