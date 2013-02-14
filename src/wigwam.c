@@ -762,7 +762,7 @@ void create_digest_password(char *username, char *realm) {
 	md5((unsigned char*)data, strlen(data), digest);
 	md5_bin2hex(digest, encrypted);
 
-	free(data);
+	clear_free(data, strlen(data));
 
 	printf("%s:%s:%s\n", username, realm, encrypted);
 }

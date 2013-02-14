@@ -58,7 +58,7 @@ cp wigwam.exe ${dir}/Hiawatha/bin
 cp polarssl/library/cygpolarssl-2.dll ${dir}/Hiawatha/bin
 strip ${dir}/Hiawatha/bin/*.exe
 
-files="cygcrypt-0.dll cyggcc_s-1.dll cygrunsrv.exe cygiconv-2.dll cygwin1.dll cygxml2-2.dll cygxslt-1.dll cygz.dll"
+files="cygcrypt-0.dll cyggcc_s-1.dll cygrunsrv.exe cygiconv-2.dll cygwin1.dll cygxml2-2.dll cygxslt-1.dll cygz.dll cyglzma-5.dll"
 for file in ${files}; do
 	cp /bin/${file} ${dir}/Hiawatha/bin
 done

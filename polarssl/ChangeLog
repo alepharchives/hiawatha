@@ -1,5 +1,33 @@
 PolarSSL ChangeLog
 
+= Version 1.2.3 released 2012-11-26
+Bugfix
+   * Server not always sending correct CertificateRequest message
+
+= Version 1.2.2 released 2012-11-24
+Changes
+   * Added p_hw_data to ssl_context for context specific hardware acceleration
+     data
+   * During verify trust-CA is only checked for expiration and CRL presence  
+
+Bugfixes
+   * Fixed client authentication compatibility
+   * Fixed dependency on POLARSSL_SHA4_C in SSL modules
+
+= Version 1.2.1 released 2012-11-20
+Changes
+   * Depth that the certificate verify callback receives is now numbered
+     bottom-up (Peer cert depth is 0)
+
+Bugfixes
+   * Fixes for MSVC6
+   * Moved mpi_inv_mod() outside POLARSSL_GENPRIME
+   * Allow R and A to point to same mpi in mpi_div_mpi (found by Manuel
+     Pégourié-Gonnard)
+   * Fixed possible segfault in mpi_shift_r() (found by Manuel
+     Pégourié-Gonnard)
+   * Added max length check for rsa_pkcs1_sign with PKCS#1 v2.1
+
 = Version 1.2.0 released 2012-10-31
 Features
    * Added support for NULL cipher (POLARSSL_CIPHER_NULL_CIPHER) and weak

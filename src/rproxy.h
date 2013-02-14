@@ -35,6 +35,7 @@ typedef struct type_rproxy {
 	int       port;
 	char      *path;
 	size_t    path_len;
+	int       timeout;
 
 	struct type_rproxy *next;
 } t_rproxy;
@@ -69,7 +70,6 @@ void init_rproxy_options(t_rproxy_options *options, int socket, t_ip_addr *clien
 int connect_to_webserver(t_rproxy *rproxy);
 int send_request_to_webserver(t_rproxy_webserver *webserver, t_rproxy_options *options,
                               t_rproxy *rproxy);
-int read_from_webserver(t_rproxy_webserver *webserver, char *buffer, int size);
 
 #endif
 

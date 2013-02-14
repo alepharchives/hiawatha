@@ -23,6 +23,7 @@
 #include <sys/stat.h>
 #include "libfs.h"
 #include "libip.h"
+#include "libstr.h"
 #include "session.h"
 #include "cache.h"
 
@@ -80,7 +81,7 @@ static t_cached_object *remove_from_cache(t_cached_object *object, int index) {
 		cache[index] = object->next;
 	}
 
-	free(object->data);
+	clear_free(object->data, object->size);
 	free(object->file);
 	free(object);
 
@@ -156,7 +157,7 @@ t_cached_object *add_file_to_cache(t_session *session, char *file) {
 		while ((off_t)bytes_total < size) {
 			if ((bytes_read = read(fd, object->data + bytes_total, size - bytes_total)) == -1) {
 				if (errno != EINTR) {
-					free(object->data);
+					clear_free(object->data, size);
 					free(object->file);
 					free(object);
 					close(fd);
@@ -169,7 +170,7 @@ t_cached_object *add_file_to_cache(t_session *session, char *file) {
 		}
 		close(fd);
 	} else {
-		free(object->data);
+		clear_free(object->data, size);
 		free(object->file);
 		free(object);
 
@@ -184,7 +185,7 @@ t_cached_object *add_file_to_cache(t_session *session, char *file) {
 	copy_ip(&(object->last_ip), &(session->ip_address));
 
 	if (add_object_to_cache(object) == false) {
-		free(object->data);
+		clear_free(object->data, size);
 		free(object->file);
 		free(object);
 
@@ -293,12 +294,22 @@ t_cached_object *add_cgi_output_to_cache(t_session *session, char *cgi_output, i
 		memcpy(data, cgi_output, size);
 	}
 
+	/* Remove cookies
+	 */
+	if ((pos = strcasestr(data, "Set-Cookie:")) != NULL) {
+		strcpy(pos, "X-Empty: ");
+		pos += 9;
+		do {
+			*(pos++) = ' ';
+		} while ((*pos != '\r') && (*pos != '\0'));
+	}
+
 	if ((object = (t_cached_object*)malloc(sizeof(t_cached_object))) == NULL) {
-		free(data);
+		clear_free(data, size);
 		return NULL;
 	} else if ((object->file = make_url(session, NULL)) == NULL) {
+		clear_free(data, size);
 		free(object);
-		free(data);
 		return NULL;
 	}
 
@@ -310,7 +321,7 @@ t_cached_object *add_cgi_output_to_cache(t_session *session, char *cgi_output, i
 	copy_ip(&(object->last_ip), &(session->ip_address));
 
 	if (add_object_to_cache(object) == false) {
-		free(object->data);
+		clear_free(object->data, size);
 		free(object->file);
 		free(object);
 
@@ -470,7 +481,7 @@ int clear_cache() {
 				cache_size -= object->size;
 				pthread_mutex_unlock(&cache_size_mutex);
 
-				free(object->data);
+				clear_free(object->data, object->size);
 				free(object->file);
 				free(object);
 

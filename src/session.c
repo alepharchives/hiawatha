@@ -144,17 +144,17 @@ void reset_session(t_session *session) {
 
 	session->error_cause = ec_NONE;
 
-	sfree(session->file_on_disk);
+	check_clear_free(session->file_on_disk, CHECK_USE_STRLEN);
 #ifdef CIFS
-	sfree(session->extension);
+	check_free(session->extension);
 #endif
-	sfree(session->local_user);
-	sfree(session->remote_user);
-	sfree(session->path_info);
-	sfree(session->request_uri);
-	sfree(session->location);
+	check_clear_free(session->local_user, CHECK_USE_STRLEN);
+	check_clear_free(session->remote_user, CHECK_USE_STRLEN);
+	check_free(session->path_info);
+	check_free(session->request_uri);
+	check_free(session->location);
 #ifdef ENABLE_XSLT
-	sfree(session->xslt_file);
+	check_free(session->xslt_file);
 #endif
 	if (session->uploaded_file != NULL) {
 		unlink(session->uploaded_file);
@@ -181,7 +181,7 @@ void reset_session(t_session *session) {
 		memmove(session->request, session->request + size, session->bytes_in_buffer);
 		*(session->request + session->bytes_in_buffer) = '\0';
 	} else {
-		sfree(session->request);
+		check_clear_free(session->request, session->buffer_size);
 		session->request = NULL;
 		session->buffer_size = 0;
 		session->bytes_in_buffer = 0;
@@ -198,7 +198,7 @@ void reset_session(t_session *session) {
 /* Free all remaining buffers
  */
 void destroy_session(t_session *session) {
-	sfree(session->request);
+	check_free(session->request);
 	session->request = NULL;
 }
 
@@ -246,7 +246,7 @@ int get_target_extension(t_session *session) {
 	char *last_slash;
 
 #ifdef CIFS
-	sfree(session->extension);
+	check_free(session->extension);
 #endif
 
 	if ((last_slash = strrchr(session->file_on_disk, '/')) == NULL) {

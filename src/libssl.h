@@ -28,6 +28,9 @@ typedef struct {
 	x509_cert   *certificate;
 	x509_cert   *ca_certificate;
 	x509_crl    *ca_crl;
+	int         timeout;
+	int         min_ssl_version;
+	int         dh_size;
 } t_ssl_accept_data;
 
 void ssl_initialize(char *logfile);
@@ -36,7 +39,7 @@ int  ssl_register_sni(t_charlist *hostname, rsa_context *private_key, x509_cert 
 int  ssl_load_key_cert(char *file, rsa_context **private_key, x509_cert **certificate);
 int  ssl_load_ca_cert(char *file, x509_cert **ca_certificate);
 int  ssl_load_ca_crl(char *file, x509_crl **ca_crl);
-int  ssl_accept(t_ssl_accept_data *ssl_accept_data, int timeout, int min_ssl_version);
+int  ssl_accept(t_ssl_accept_data *ssl_accept_data);
 int  ssl_pending(ssl_context *ssl);
 int  ssl_receive(ssl_context *ssl, char *buffer, unsigned int maxlength);
 int  ssl_send(ssl_context *ssl, const char *buffer, unsigned int length);

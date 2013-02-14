@@ -217,7 +217,7 @@ static int basic_http_authentication(t_session *session, char *auth_str) {
 	 */
 	if (base64_decode((unsigned char*)auth_user, &auth_len, (unsigned char*)auth_str, auth_len) != 0) {
 		register_wrong_password(session);
-		free(auth_user);
+		clear_free(auth_user, auth_len);
 		return ha_DENIED;
 	}
 
@@ -229,7 +229,7 @@ static int basic_http_authentication(t_session *session, char *auth_str) {
 	}
 	if (*auth_passwd != ':') {
 		register_wrong_password(session);
-		free(auth_user);
+		clear_free(auth_user, auth_len);
 		return ha_DENIED;
 	}
 	*(auth_passwd++) = '\0';
@@ -237,7 +237,7 @@ static int basic_http_authentication(t_session *session, char *auth_str) {
 	/* Group oke?
 	 */
 	if (group_oke(session, auth_user, &(session->host->required_group)) == false) {
-		free(auth_user);
+		clear_free(auth_user, auth_len);
 		return ha_FORBIDDEN;
 	}
 
@@ -245,7 +245,7 @@ static int basic_http_authentication(t_session *session, char *auth_str) {
 	 */
 	if ((passwd = get_password(session, auth_user)) == NULL) {
 		register_wrong_password(session);
-		free(auth_user);
+		clear_free(auth_user, auth_len);
 		return ha_DENIED;
 	}
 
@@ -263,8 +263,8 @@ static int basic_http_authentication(t_session *session, char *auth_str) {
 		retval = ha_DENIED;
 	}
 
-	free(auth_user);
-	free(passwd);
+	clear_free(auth_user, auth_len);
+	clear_free(passwd, strlen(passwd));
 
 	return retval;
 }
@@ -368,11 +368,11 @@ static int digest_http_authentication(t_session *session, char *auth_str) {
 		register_wrong_password(session);
 		return ha_DENIED;
 	} else if (strlen(passwd) != 32) {
-		free(passwd);
+		clear_free(passwd, strlen(passwd));
 		return ha_DENIED;
 	}
 	memcpy(A1, passwd, 33);
-	free(passwd);
+	clear_free(passwd, strlen(passwd));
 
 	/* Calculate A2
 	 */
@@ -382,7 +382,7 @@ static int digest_http_authentication(t_session *session, char *auth_str) {
 	sprintf(value, "%s:%s", session->method, uri);
 	md5((unsigned char*)value, strlen(value), digest);
 	md5_bin2hex(digest, A2);
-	free(value);
+	clear_free(value, strlen(value));
 
 	/* Calculate response
 	 */
@@ -392,7 +392,7 @@ static int digest_http_authentication(t_session *session, char *auth_str) {
 	sprintf(value, "%s:%s:%s", A1, nonce, A2);
 	md5((unsigned char*)value, strlen(value), digest);
 	md5_bin2hex(digest, result);
-	free(value);
+	clear_free(value, strlen(value));
 
 	/* Password match?
 	 */

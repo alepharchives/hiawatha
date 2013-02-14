@@ -33,7 +33,7 @@
 #define MAX_LENGTH_CONFIGLINE   512
 #define MAX_CACHE_SIZE           50
 #define MAX_UPLOAD_SIZE         100
-#define MONITOR_HOSTNAME      "monitor"
+#define MONITOR_HOSTNAME  "monitor"
 
 enum t_section { syntax_error = -1, none, binding, virtual_host, directory, fcgi_server
 #ifdef ENABLE_TOOLKIT
@@ -340,6 +340,7 @@ t_config *default_config(void) {
 
 #ifdef ENABLE_SSL
 	config->min_ssl_version    = SSL_MINOR_VERSION_0;
+	config->dh_size            = 0;
 #endif
 	return config;
 }
@@ -779,6 +780,19 @@ static bool system_setting(char *key, char *value, t_config *config) {
 		if ((config->total_connections = str2int(value)) != -1) {
 			return true;
 		}
+#ifdef ENABLE_SSL
+	} else if (strcmp(key, "dhsize") == 0) {
+		if (strcmp(value, "1024") == 0) {
+			config->dh_size = 1024;
+			return true;
+		} else if (strcmp(value, "2048") == 0) {
+			config->dh_size = 2048;
+			return true;
+		} else if (strcmp(value, "4096") == 0) {
+			config->dh_size = 4096;
+			return true;
+		}
+#endif
 	} else if (strcmp(key, "exploitlogfile") == 0) {
 		if (*value == '/') {
 			if ((config->exploit_logfile = strdup(value)) != NULL) {

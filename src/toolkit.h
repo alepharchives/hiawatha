@@ -23,7 +23,6 @@
 #define UT_ERROR        -1
 #define UT_RETURN        0
 #define UT_EXIT          1
-#define UT_RPROXY        2
 #define UT_REDIRECT    301
 #define UT_DENY_ACCESS 403
 

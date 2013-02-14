@@ -186,7 +186,11 @@ int fetch_request(t_session *session) {
 		switch (poll_result) {
 			case -1:
 				if (errno != EINTR) {
-					session->error_cause = ec_SOCKET_READ_ERROR;
+					if (session->bytes_in_buffer == 0) {
+						session->error_cause = ec_CLIENT_DISCONNECTED;
+					} else {
+						session->error_cause = ec_SOCKET_READ_ERROR;
+					}
 					result = -1;
 					keep_reading = false;
 				}
@@ -229,7 +233,11 @@ int fetch_request(t_session *session) {
 				switch (bytes_read) {
 					case -1:
 						if (errno != EINTR) {
-							session->error_cause = ec_SOCKET_READ_ERROR;
+							if (session->bytes_in_buffer == 0) {
+								session->error_cause = ec_CLIENT_DISCONNECTED;
+							} else {
+								session->error_cause = ec_SOCKET_READ_ERROR;
+							}
 							result = -1;
 							keep_reading = false;
 						}

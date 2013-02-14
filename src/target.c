@@ -21,6 +21,7 @@
 #include <time.h>
 #include <signal.h>
 #include <pthread.h>
+#include <poll.h>
 #include <sys/file.h>
 #include <sys/time.h>
 #include <sys/stat.h>
@@ -52,7 +53,6 @@
 #define MAX_TRACE_HEADER       2 * KILOBYTE
 #define VALUE_SIZE            64
 #define WAIT_FOR_LOCK          3
-#define FILESIZE_BUFFER_SIZE  30
 
 #define RPROXY_BUFFER_SIZE     4 * KILOBYTE
 
@@ -378,6 +378,7 @@ int send_file(t_session *session) {
 							total_bytes += bytes_read;
 						}
 					} while ((bytes_read != -1) && (total_bytes < send_size));
+
 					if (bytes_read != -1) {
 						if (send_buffer(session, buffer, send_size) == -1) {
 							retval = -1;
@@ -385,6 +386,8 @@ int send_file(t_session *session) {
 					} else {
 						retval = -1;
 					}
+
+					memset(buffer, 0, send_size);
 				} else {
 					retval = -1;
 				}
@@ -436,10 +439,13 @@ int send_file(t_session *session) {
 								send_size -= bytes_read;
 						}
 					}
+
+					memset(buffer, 0, FILE_BUFFER_SIZE);
 				} else {
 					retval = -1;
 				}
 			}
+
 			if (buffer != NULL) {
 				free(buffer);
 			}
@@ -846,6 +852,9 @@ int execute_cgi(t_session *session) {
 									log_error(session, "invalid status code received from CGI");
 								} else if (result != 200) {
 									session->return_code = result;
+									if (result == 500) {
+										log_error(session, "CGI returned 500 Internal Error");
+									}
 									if (session->host->trigger_on_cgi_status) {
 										retval = result;
 										break;
@@ -908,10 +917,10 @@ int execute_cgi(t_session *session) {
 							 */
 							if (cache_buffer != NULL) {
 								if (retval != 200) {
-									free(cache_buffer);
+									clear_free(cache_buffer, session->config->cache_max_filesize);
 									cache_buffer = NULL;
 								} else if ((off_t)(cache_size + cgi_info.input_len) > session->config->cache_max_filesize) {
-									free(cache_buffer);
+									clear_free(cache_buffer, session->config->cache_max_filesize);
 									cache_buffer = NULL;
 								} else {
 									memcpy(cache_buffer + cache_size, cgi_info.input_buffer, cgi_info.input_len);
@@ -957,7 +966,7 @@ int execute_cgi(t_session *session) {
 		if (retval == rs_QUIT) {
 			add_cgi_output_to_cache(session, cache_buffer, cache_size, cache_time);
 		}
-		free(cache_buffer);
+		clear_free(cache_buffer, session->config->cache_max_filesize);
 	}
 #endif
 
@@ -985,8 +994,8 @@ int execute_cgi(t_session *session) {
 			retval = 200;
 	}
 
-	free(cgi_info.input_buffer);
-	free(cgi_info.error_buffer);
+	clear_free(cgi_info.input_buffer, cgi_info.input_len);
+	clear_free(cgi_info.error_buffer, cgi_info.error_len);
 
 	return retval;
 }
@@ -1384,8 +1393,10 @@ int proxy_request(t_session *session, t_rproxy *rproxy) {
 	t_rproxy_options options;
 	t_rproxy_webserver webserver;
 	char buffer[RPROXY_BUFFER_SIZE + 1], *begin, *end;
-	int bytes_read, bytes_in_buffer = 0, result = 200, code;
-	bool first_line_read = false;
+	int bytes_read, bytes_in_buffer = 0, result = 200, code, poll_result;
+	bool first_line_read = false, keep_reading = true;
+	struct pollfd poll_data;
+	time_t deadline;
 
 #ifdef ENABLE_DEBUG
 	session->current_task = "proxy request";
@@ -1423,53 +1434,93 @@ int proxy_request(t_session *session, t_rproxy *rproxy) {
 
 	/* Read request from webserver and send to client
 	 */
-	while ((bytes_read = read_from_webserver(&webserver, buffer + bytes_in_buffer, RPROXY_BUFFER_SIZE - bytes_in_buffer)) > 0) {
-		if (bytes_read == -1) {
-			if (errno != EINTR) {
-				result = -1;
-				break;
-			}
-			continue;
+	deadline = time(NULL) + rproxy->timeout;
+
+	do {
+#ifdef ENABLE_SSL
+		poll_result = session->binding->use_ssl ? ssl_pending(&(session->ssl_context)) : 0;
+
+		if (poll_result == 0) {
+#endif
+			poll_data.fd = webserver.socket;
+			poll_data.events = POLL_EVENT_BITS;
+			poll_result = poll(&poll_data, 1, 1000);
+#ifdef ENABLE_SSL
 		}
+#endif
 
-		/* Read first line and extract return code
-		 */
-		if (first_line_read == false) {
-			bytes_in_buffer += bytes_read;
-
-			*(buffer + bytes_in_buffer) = '\0';
-			if (strstr(buffer, "\r\n") != NULL) {
-				if ((begin = strchr(buffer, ' ')) != NULL) {
-					begin++;
-					if ((end = strchr(begin, ' ')) != NULL) {
-						*end = '\0';
-						if ((code = str2int(begin)) != -1) {
-							session->return_code = code;
-						}
-						*end = ' ';
-					}
+		switch (poll_result) {
+			case -1:
+				if (errno != EINTR) {
+					result = -1;
+					keep_reading = false;
 				}
-
-				first_line_read = true;
-				bytes_read = bytes_in_buffer;
-				bytes_in_buffer = 0;
-			} else if (bytes_in_buffer == RPROXY_BUFFER_SIZE) {
-				result = -1;
 				break;
-			} else {
-				continue;
-			}
-		}
+			case 0:
+				if (time(NULL) > deadline) {
+					result = 504;
+					keep_reading = false;
+				}
+				break;
+			default:
+#ifdef ENABLE_SSL
+			    if (webserver.use_ssl) {
+					bytes_read = ssl_receive(&(webserver.ssl), buffer + bytes_in_buffer, RPROXY_BUFFER_SIZE - bytes_in_buffer);
+				} else
+#endif
+					bytes_read = read(webserver.socket, buffer + bytes_in_buffer, RPROXY_BUFFER_SIZE - bytes_in_buffer);
 
-		/* Send data to client
-		 */
-		if (send_buffer(session, buffer, bytes_read) == -1) {
-			result = -1;
-			break;
-		}
+				switch (bytes_read) {
+					case -1:
+						if (errno != EINTR) {
+							result = -1;
+							keep_reading = false;
+						}
+						break;
+					case 0:
+						keep_reading = false;
+						break;
+					default:
+						/* Read first line and extract return code
+						 */
+						if (first_line_read == false) {
+							bytes_in_buffer += bytes_read;
 
-		session->data_sent = true;
-	}
+							*(buffer + bytes_in_buffer) = '\0';
+							if (strstr(buffer, "\r\n") != NULL) {
+								if ((begin = strchr(buffer, ' ')) != NULL) {
+									begin++;
+									if ((end = strchr(begin, ' ')) != NULL) {
+										*end = '\0';
+										if ((code = str2int(begin)) != -1) {
+											session->return_code = code;
+										}
+										*end = ' ';
+									}
+								}
+
+								first_line_read = true;
+								bytes_read = bytes_in_buffer;
+								bytes_in_buffer = 0;
+							} else if (bytes_in_buffer == RPROXY_BUFFER_SIZE) {
+								result = -1;
+								break;
+							} else {
+								continue;
+							}
+						}
+
+						/* Send data to client
+						 */
+						if (send_buffer(session, buffer, bytes_read) == -1) {
+							result = -1;
+							break;
+						}
+
+						session->data_sent = true;
+				}
+		}
+	} while (keep_reading);
 
 	/* Close connection to webserver
 	 */

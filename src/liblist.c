@@ -19,12 +19,6 @@
 #include "liblist.h"
 #include "libip.h"
 
-void sfree(void *ptr) {
-	if (ptr != NULL) {
-		free(ptr);
-	}
-}
-
 /*---< headerlist >-----------------------------------------------------------*/
 
 /* Parse the HTTP headerfields from the received request.
@@ -206,9 +200,9 @@ void remove_charlist(t_charlist *list) {
 		if (list->size > 0) {
 			do {
 				list->size--;
-				sfree(*(list->item + list->size));
+				check_free(*(list->item + list->size));
 			} while (list->size > 0);
-			sfree(list->item);
+			check_free(list->item);
 			list->item = NULL;
 		}
 	}
@@ -442,8 +436,8 @@ t_keyvalue *remove_keyvaluelist(t_keyvalue *list) {
 		remove = list;
 		list = list->next;
 
-		sfree(remove->key);
-		sfree(remove->value);
+		check_free(remove->key);
+		check_free(remove->value);
 		free(remove);
 	}
 
@@ -539,7 +533,7 @@ void remove_tempdata(t_tempdata *tempdata) {
 
 		switch (tdata->type) {
 			case tc_data:
-				sfree(tdata->content);
+				check_free(tdata->content);
 				break;
 			case tc_accesslist:
 				remove_accesslist((t_accesslist*)tdata->content);

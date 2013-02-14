@@ -1,3 +1,16 @@
+hiawatha (8.7) stable; urgency=low
+
+  * Support for HTTP Strict Transport Security (RFC 6797). Integrated
+    in RequireSSL option.
+  * DHsize option added.
+  * PolarSSL updated to version 1.2.3.
+  * CloudFlare headers placed in environment variables.
+  * Removed php-fcgi.
+  * Small improvements.
+  * Bugfix: slow page loading via Reverse Proxy.
+
+ -- Hugo Leisink <hugo@leisink.net>  Wed,  9 Jan 2013 20:18:23 +0100
+
 hiawatha (8.6) stable; urgency=low
 
   * PolarSSL updated to version 1.2. Added support for TLS 1.2 and

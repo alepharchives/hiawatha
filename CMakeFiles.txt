@@ -39,16 +39,6 @@ if(NOT ENABLE_SSL)
 	set(hiawatha_src ${hiawatha_src} polarssl/library/base64.c  polarssl/library/md5.c)
 endif()
 
-# php-fcgi sources
-set(php_fcgi_src
-	src/alternative.c
-	src/libip.c
-	src/liblist.c
-	src/libstr.c
-	src/php-fcgi.c
-	src/userconfig.c
-)
-
 # ssi-cgi sources
 set(ssi_cgi_src
 	src/alternative.c
@@ -80,7 +70,6 @@ set(config_files
 
 set(config_files_in
 	config/hiawatha.conf
-	config/php-fcgi.conf
 )
 
 # manual pages
@@ -92,5 +81,4 @@ set(manual_pages
 set(manual_pages_in
 	man/cgi-wrapper.1
 	man/hiawatha.1
-	man/php-fcgi.1
 )

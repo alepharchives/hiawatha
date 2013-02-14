@@ -25,7 +25,7 @@
 #include <zlib.h>
 #include "global.h"
 #include "monitor.h"
-#include "liblist.h"
+#include "libstr.h"
 #include "libip.h"
 
 #define MAX_MONITOR_BUFFER_SIZE 50 * KILOBYTE
@@ -268,7 +268,7 @@ int monitor_stats(t_config *config, time_t now) {
 
 		if (len > str_len) {
 			str_len = len + 100;
-			sfree(str);
+			check_free(str);
 			if ((str = (char*)malloc(str_len)) == NULL) {
 				return -1;
 			}
@@ -296,7 +296,7 @@ int monitor_stats(t_config *config, time_t now) {
 
 	if (len > str_len) {
 		str_len = len + 100;
-		sfree(str);
+		check_free(str);
 		if ((str = (char*)malloc(str_len)) == NULL) {
 			return -1;
 		}
@@ -315,7 +315,7 @@ int monitor_stats(t_config *config, time_t now) {
 
 	reset_server_stats(&(config->monitor_stats));
 
-	sfree(str);
+	check_free(str);
 
 	/* Force syncing of monitor buffer
 	 */

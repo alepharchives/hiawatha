@@ -338,6 +338,7 @@ typedef struct type_config {
 #endif
 #ifdef ENABLE_SSL
 	int           min_ssl_version;
+	int           dh_size;
 #endif
 } t_config;
 

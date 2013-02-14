@@ -180,7 +180,9 @@ static const char **get_transform_parameters(t_session *session) {
 	snprintf(value, 9, "%d", session->binding->port);
 	add_parameter(params, "SERVER_PORT", value, &i);
 	add_parameter(params, "SERVER_NAME", *(session->host->hostname.item), &i);
-	add_parameter(params, "SERVER_SOFTWARE", session->config->server_string, &i);
+	if (session->config->server_string != NULL) {
+		add_parameter(params, "SERVER_SOFTWARE", session->config->server_string, &i);
+	}
 #ifdef ENABLE_SSL
 	if (session->binding->use_ssl) {
 		add_parameter(params, "HTTP_SCHEME", "https", &i);
@@ -343,10 +345,10 @@ bool can_transform_with_xslt(t_session *session) {
 static int apply_xslt_sheet(t_session *session, xmlDocPtr data_xml) {
 	xmlDocPtr style_xml, result_xml;
 	xsltStylesheetPtr xslt;
-	xmlOutputBufferPtr output;
+	xmlChar *raw_xml;
 	char value[VALUE_SIZE + 1];
 	const char **params;
-	int result = 200;
+	int result = 200, raw_size;
 
 	/* Read XML data
 	 */
@@ -396,14 +398,8 @@ static int apply_xslt_sheet(t_session *session, xmlDocPtr data_xml) {
 		xsltFreeStylesheet(xslt);
 		return 500;
 	}
-	if ((output = xmlAllocOutputBuffer(NULL)) == NULL) {
-		xmlFreeDoc(result_xml);
-		xsltFreeStylesheet(xslt);
-		return 500;
-	}
-    if (xsltSaveResultTo(output, result_xml, xslt) == -1) {
+	if (xsltSaveResultToString(&raw_xml, &raw_size, result_xml, xslt) == -1) {
 		log_file_error(session, session->file_on_disk, "transformation error");
-		xmlOutputBufferClose(output);
 		xmlFreeDoc(result_xml);
 		xsltFreeStylesheet(xslt);
 		return 500;
@@ -414,17 +410,17 @@ static int apply_xslt_sheet(t_session *session, xmlDocPtr data_xml) {
 	value[VALUE_SIZE] = '\0';
 	if (send_buffer(session, hs_conlen, 16) == -1) {
 		result = -1;
-	} else if (snprintf(value, VALUE_SIZE, "%d\r\n\r\n", output->buffer->use) == -1) {
+	} else if (snprintf(value, VALUE_SIZE, "%d\r\n\r\n", raw_size) == -1) {
 		result = -1;
 	} else if (send_buffer(session, value, strlen(value)) == -1) {
 		result = -1;
-	} else if (send_buffer(session, (char*)output->buffer->content, output->buffer->use) == -1) {
+	} else if (send_buffer(session, (char*)raw_xml, raw_size) == -1) {
 		result = -1;
 	}
 
 	/* Free buffers
 	 */
-	xmlOutputBufferClose(output);
+	xmlFree(raw_xml);
 	xmlFreeDoc(result_xml);
 	xsltFreeStylesheet(xslt);
 
@@ -451,9 +447,18 @@ int transform_xml(t_session *session) {
 /* Add XML tag to buffer
  */
 int add_tag(char **buffer, int *size, int extra_size, int *len, char *tag, char *str) {
+	int result;
 	char data[32];
 
-	snprintf(data, 31, "<%s>", tag);
+	if (str == NULL) {
+		return 0;
+	}
+
+	if ((result = snprintf(data, 31, "<%s>", tag)) == -1) {
+		return -1;
+	} else if (result >= 30) {
+		return false;
+	}
 	if (add_str(buffer, size, extra_size, len, data) == -1) {
 		return -1;
 	}
@@ -462,7 +467,11 @@ int add_tag(char **buffer, int *size, int extra_size, int *len, char *tag, char 
 		return -1;
 	}
 
-	snprintf(data, 31, "</%s>", tag);
+	if ((result = snprintf(data, 31, "</%s>", tag)) == -1) {
+		return -1;
+	} else if (result >= 30) {
+		return false;
+	}
 	if (add_str(buffer, size, extra_size, len, data) == -1) {
 		return -1;
 	}
@@ -644,8 +653,8 @@ int show_index(t_session *session) {
 		/* Timestamp
 		 */
 		s = *localtime(&(file->time));
-		*(timestr + 32) = '\0';
 		strftime(timestr, 32, "%d %b %Y, %X", &s);
+		*(timestr + 32) = '\0';
 
 		if (add_str(&text_xml, &text_max, XML_CHUNK_LEN, &text_size, "\" timestamp=\"") == -1) {
 			free(text_xml);
@@ -660,8 +669,11 @@ int show_index(t_session *session) {
 		if (file->is_dir == false) {
 			/* File size
 		 	 */
-			filesize2str(fsize_str, 30, file->size);
-			if (add_str(&text_xml, &text_max, XML_CHUNK_LEN, &text_size, "\" size=\"") == -1) {
+			if (filesize2str(fsize_str, 30, file->size) == -1) {
+				free(text_xml);
+				remove_filelist(filelist);
+				return -1;
+			} else if (add_str(&text_xml, &text_max, XML_CHUNK_LEN, &text_size, "\" size=\"") == -1) {
 				free(text_xml);
 				remove_filelist(filelist);
 				return -1;
@@ -695,23 +707,23 @@ int show_index(t_session *session) {
 			return -1;
 		} else if (add_str(&text_xml, &text_max, XML_CHUNK_LEN, &text_size, "\" url_encoded=\"") == -1) {
 			free(text_xml);
-			sfree(link);
+			check_free(link);
 			remove_filelist(filelist);
 			return -1;
 		} else if (add_str(&text_xml, &text_max, XML_CHUNK_LEN, &text_size, link == NULL ? file->name : link) == -1) {
 			free(text_xml);
-			sfree(link);
+			check_free(link);
 			remove_filelist(filelist);
 			return -1;
 		} else if (file->is_dir) {
 			if (add_str(&text_xml, &text_max, XML_CHUNK_LEN, &text_size, "/") == -1) {
 				free(text_xml);
-				sfree(link);
+				check_free(link);
 				remove_filelist(filelist);
 				return -1;
 			}
 		}
-		sfree(link);
+		check_free(link);
 
 		if (xml_special_chars(file->name, &link) == -1) {
 			free(text_xml);
@@ -719,16 +731,16 @@ int show_index(t_session *session) {
 			return -1;
 		} else if (add_str(&text_xml, &text_max, XML_CHUNK_LEN, &text_size, "\">") == -1) {
 			free(text_xml);
-			sfree(link);
+			check_free(link);
 			remove_filelist(filelist);
 			return -1;
 		} else if (add_str(&text_xml, &text_max, XML_CHUNK_LEN, &text_size, link == NULL ? file->name : link) == -1) {
 			free(text_xml);
-			sfree(link);
+			check_free(link);
 			remove_filelist(filelist);
 			return -1;
 		} else {
-			sfree(link);
+			check_free(link);
 		}
 
 		if (file->is_dir) {
@@ -793,14 +805,22 @@ int show_index(t_session *session) {
 
 	/* Total size
 	 */
-	filesize2str(fsize_str, 30, total_fsize);
-	if (add_tag(&text_xml, &text_max, XML_CHUNK_LEN, &text_size, "total_size", fsize_str) == -1) {
+	if (filesize2str(fsize_str, 30, total_fsize) == -1) {
 		free(text_xml);
 		return -1;
-	} else if (add_tag(&text_xml, &text_max, XML_CHUNK_LEN, &text_size, "software", session->config->server_string) == -1) {
+	} else if (add_tag(&text_xml, &text_max, XML_CHUNK_LEN, &text_size, "total_size", fsize_str) == -1) {
 		free(text_xml);
 		return -1;
-	} else if (add_str(&text_xml, &text_max, XML_CHUNK_LEN, &text_size, "</index>") == -1) {
+	}
+
+	if (session->config->server_string != NULL) {
+		if (add_tag(&text_xml, &text_max, XML_CHUNK_LEN, &text_size, "software", session->config->server_string) == -1) {
+			free(text_xml);
+			return -1;
+		}
+	}
+	
+	if (add_str(&text_xml, &text_max, XML_CHUNK_LEN, &text_size, "</index>") == -1) {
 		free(text_xml);
 		return -1;
 	}

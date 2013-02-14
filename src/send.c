@@ -38,10 +38,8 @@
 #include "tomahawk.h"
 #endif
 
-#define MAX_CHUNK_SIZE 2048
-#define MAX_TO_BUFFER   400
+#define MAX_TO_BUFFER  1000
 #define NONCE_DIGITS     10
-#define SEND_TIMEOUT      5
 #define TIMESTR_SIZE     64
 
 char *hs_http10  = "HTTP/1.0 ";                  /*  9 */
@@ -53,8 +51,8 @@ char *hs_conka   = "keep-alive\r\n";             /* 12 */
 char *hs_contyp  = "Content-Type: ";             /* 14 */
 char *hs_lctn    = "Location: ";                 /* 10 */
 char *hs_expires = "Expires: ";                  /*  9 */
-char *hs_http    = "http://";                    /*  7 */
 char *hs_https   = "https://";                   /*  8 */
+char *hs_hsts    = "Strict-Transport-Security: max-age=31536000\r\n"; /* 45 */
 char *hs_range   = "Accept-Ranges: bytes\r\n";   /* 22 */
 char *hs_gzip    = "Content-Encoding: gzip\r\n"; /* 24 */
 char *hs_eol     = "\r\n";                       /*  2 */
@@ -349,6 +347,12 @@ int send_header(t_session *session) {
 		header = header->next;
 	}
 
+	/* HTTP Strict Transport Security
+	 */
+	if (send_buffer(session, hs_hsts, 45) == -1) {
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -420,8 +424,7 @@ int send_chunk(t_session *session, const char *chunk, int size) {
 /* Send a HTTP code to the client. Used in case of an error.
  */
 int send_code(t_session *session) {
-	int default_port;
-	char ecode[5], len[10], port[10];
+	char ecode[5], len[10];
 	const char *emesg;
 	size_t ecode_len, emesg_len;
 
@@ -455,40 +458,20 @@ int send_code(t_session *session) {
 			}
 
 #ifdef ENABLE_SSL
-			if (session->binding->use_ssl || (session->cause_of_301 == require_ssl)) {
+			if (session->cause_of_301 == require_ssl) {
 				if (send_buffer(session, hs_https, 8) == -1) {
 					return -1;
 				}
-			} else
-#endif
-			if (send_buffer(session, hs_http, 7) == -1) {
-				return -1;
-			}
 
-			if (session->hostname != NULL) {
-				if (send_buffer(session, session->hostname, strlen(session->hostname)) == -1) {
-					return -1;
-				}
-			} else if (send_buffer(session, *(session->host->hostname.item), strlen(*(session->host->hostname.item))) == -1) {
-				return -1;
-			}
-
-			if (session->cause_of_301 != require_ssl) {
-#ifdef ENABLE_SSL
-				if (session->binding->use_ssl) {
-					default_port = 443;
-				} else
-#endif
-					default_port = 80;
-
-				if (session->binding->port != default_port) {
-					port[9] = '\0';
-					snprintf(port, 9, ":%d", session->binding->port);
-					if (send_buffer(session, port, strlen(port)) == -1) {
+				if (session->hostname != NULL) {
+					if (send_buffer(session, session->hostname, strlen(session->hostname)) == -1) {
 						return -1;
 					}
+				} else if (send_buffer(session, *(session->host->hostname.item), strlen(*(session->host->hostname.item))) == -1) {
+					return -1;
 				}
 			}
+#endif
 
 			if (send_buffer(session, session->uri, session->uri_len) == -1) {
 				return -1;

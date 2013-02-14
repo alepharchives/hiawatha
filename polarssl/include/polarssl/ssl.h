@@ -116,8 +116,8 @@
 #define SSL_LEGACY_RENEGOTIATION        0
 #define SSL_SECURE_RENEGOTIATION        1
 
-#define SSL_RENEGOTIATION_ENABLED       0
-#define SSL_RENEGOTIATION_DISABLED      1
+#define SSL_RENEGOTIATION_DISABLED      0
+#define SSL_RENEGOTIATION_ENABLED       1
 
 #define SSL_LEGACY_NO_RENEGOTIATION     0
 #define SSL_LEGACY_ALLOW_RENEGOTIATION  1
@@ -191,6 +191,11 @@
 #define SSL_HASH_SHA512              6
 
 #define SSL_SIG_RSA                  1
+
+/*
+ * Client Certificate Types
+ */
+#define SSL_CERT_TYPE_RSA_SIGN       1
 
 /*
  * Message, alert and handshake types
@@ -351,6 +356,8 @@ struct _ssl_handshake_params
      * Handshake specific crypto variables
      */
     int sig_alg;                        /*!<  Signature algorithm     */
+    int cert_type;                      /*!<  Requested cert type     */
+    int verify_sig_alg;                 /*!<  Signature algorithm for verify */
 #if defined(POLARSSL_DHM_C)
     dhm_context dhm_ctx;                /*!<  DHM key exchange        */
 #endif
@@ -415,6 +422,7 @@ struct _ssl_context
     void *p_get_cache;          /*!< context for cache retrieval      */
     void *p_set_cache;          /*!< context for cache store          */
     void *p_sni;                /*!< context for SNI extension        */
+    void *p_hw_data;            /*!< context for HW acceleration      */
 
     /*
      * Session layer
@@ -682,7 +690,7 @@ void ssl_set_bio( ssl_context *ssl,
  *                 data) is cleared by the SSL/TLS layer when the connection is
  *                 terminated. It is recommended to add metadata to determine if
  *                 an entry is still valid in the future. Return 0 if
- *                 successfully cached, return 0 otherwise.
+ *                 successfully cached, return 1 otherwise.
  *
  * \param ssl            SSL context
  * \param f_get_cache    session get callback
@@ -720,20 +728,22 @@ void ssl_set_ciphersuites( ssl_context *ssl, const int *ciphersuites );
  * \brief          Set the data required to verify peer certificate
  *
  * \param ssl      SSL context
- * \param ca_chain trusted CA chain
+ * \param ca_chain trusted CA chain (meaning all fully trusted top-level CAs)
  * \param ca_crl   trusted CA CRLs
  * \param peer_cn  expected peer CommonName (or NULL)
- *
- * \note           TODO: add two more parameters: depth and crl
  */
 void ssl_set_ca_chain( ssl_context *ssl, x509_cert *ca_chain,
                        x509_crl *ca_crl, const char *peer_cn );
 
 /**
- * \brief          Set own certificate and private key
+ * \brief          Set own certificate chain and private key
+ *
+ *                 Note: own_cert should contain IN order from the bottom
+ *                 up your certificate chain. The top certificate (self-signed)
+ *                 can be omitted.
  *
  * \param ssl      SSL context
- * \param own_cert own public certificate
+ * \param own_cert own public certificate chain
  * \param rsa_key  own private RSA key
  */
 void ssl_set_own_cert( ssl_context *ssl, x509_cert *own_cert,
@@ -747,8 +757,12 @@ void ssl_set_own_cert( ssl_context *ssl, x509_cert *own_cert,
  *                 of the callback parameters, with the only change being
  *                 that the rsa_context * is a void * in the callbacks)
  *
+ *                 Note: own_cert should contain IN order from the bottom
+ *                 up your certificate chain. The top certificate (self-signed)
+ *                 can be omitted.
+ *
  * \param ssl      SSL context
- * \param own_cert own public certificate
+ * \param own_cert own public certificate chain
  * \param rsa_key  alternate implementation private RSA key
  * \param rsa_decrypt_func  alternate implementation of \c rsa_pkcs1_decrypt()
  * \param rsa_sign_func     alternate implementation of \c rsa_pkcs1_sign()
@@ -852,7 +866,8 @@ void ssl_set_min_version( ssl_context *ssl, int major, int minor );
  *                 (Default: SSL_RENEGOTIATION_DISABLED)
  *
  *                 Note: A server with support enabled is more vulnerable for a
- *                 resource DoS by a malicious client.
+ *                 resource DoS by a malicious client. You should enable this on
+ *                 a client to enable server-initiated renegotiation.
  *
  * \param ssl      SSL context
  * \param renegotiation     Enable or disable (SSL_RENEGOTIATION_ENABLED or
@@ -883,8 +898,9 @@ void ssl_set_renegotiation( ssl_context *ssl, int renegotiation );
  *                 (Most secure option, interoperability issues)
  *
  * \param ssl      SSL context
- * \param allow_legacy  Prevent or allow (SSL_NO_LEGACY_RENEGOTIATION or
- *                                        SSL_ALLOW_LEGACY_RENEGOTIATION)
+ * \param allow_legacy  Prevent or allow (SSL_NO_LEGACY_RENEGOTIATION,
+ *                                        SSL_ALLOW_LEGACY_RENEGOTIATION or
+ *                                        SSL_LEGACY_BREAK_HANDSHAKE)
  */
 void ssl_legacy_renegotiation( ssl_context *ssl, int allow_legacy );
 
@@ -999,7 +1015,7 @@ int ssl_write( ssl_context *ssl, const unsigned char *buf, size_t len );
  *                  (SSL_ALERT_LEVEL_WARNING or SSL_ALERT_LEVEL_FATAL)
  * \param message   The alert message (SSL_ALERT_MSG_*)
  *
- * \return          1 if successful, or a specific SSL error code.
+ * \return          0 if successful, or a specific SSL error code.
  */
 int ssl_send_alert_message( ssl_context *ssl,
                             unsigned char level,

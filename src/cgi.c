@@ -815,7 +815,7 @@ t_cgi_result read_from_fcgi_server(t_session *session, t_cgi_info *cgi_info) {
 			}
 	}
 
-	sfree(dummy);
+	check_clear_free(dummy, DUMMY_BUFFER_SIZE);
 
 	return result;
 }

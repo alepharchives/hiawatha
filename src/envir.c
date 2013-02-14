@@ -229,6 +229,11 @@ void set_environment(t_session *session, t_fcgi_buffer *fcgi_buffer) {
 		headerfield_to_environment(session, fcgi_buffer, "Overwrite:", "HTTP_OVERWRITE");
 	}
 
+	/* CloudFlare headers
+	 */
+	headerfield_to_environment(session, fcgi_buffer, "CF-Connecting-IP:", "HTTP_CF_CONNECTING_IP");
+	headerfield_to_environment(session, fcgi_buffer, "CF-IPCountry:", "HTTP_CF_IPCOUNTRY");
+
 	/* Convert X-* HTTP headers to HTTP_* environment variables
 	 */
 	headerfields = session->headerfields;

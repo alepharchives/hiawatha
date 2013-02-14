@@ -20,8 +20,32 @@
 #include <regex.h>
 #include "global.h"
 #include "alternative.h"
+#include "libstr.h"
 
 #define MAX_VALUE (INT_MAX - 10) / 10
+
+/* Memory free functions
+ */
+void check_free(void *ptr) {
+	if (ptr != NULL) {
+		free(ptr);
+	}
+}
+
+void clear_free(void *ptr, int size) {
+	if (size == CHECK_USE_STRLEN) {
+		size = strlen(ptr);
+	}
+
+	memset(ptr, 0, size);
+	free(ptr);
+}
+
+void check_clear_free(void *ptr, int size) {
+	if (ptr != NULL) {
+		clear_free(ptr, size);
+	}
+}
 
 /* Convert a string to an integer.
  */
@@ -434,7 +458,6 @@ int header_to_variable(char *header, char *variable, int size) {
 int filesize2str(char *buffer, int len, off_t fsize) {
 	int result = 0;
 
-	buffer[len - 1] = '\0';
 	if (fsize < KILOBYTE) {
 		result = snprintf(buffer, len - 1, "%llu byte", (long long)fsize);
 	} else if (fsize < MEGABYTE) {
@@ -444,8 +467,15 @@ int filesize2str(char *buffer, int len, off_t fsize) {
 	} else {
 		result = snprintf(buffer, len - 1, "%0.1f GB", ((double)(fsize >> 26)) / 16);
 	}
+	buffer[len - 1] = '\0';
 
-	return (result < 0) ? 0 : result;
+	if (result == -1) {
+		return -1;
+	} else if (result >= len) {
+		return -1;
+	}
+
+	return result;
 }
 
 

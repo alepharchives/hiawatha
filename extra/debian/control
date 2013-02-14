@@ -9,7 +9,7 @@ Build-Depends: libc6-dev, dpkg-dev, debhelper, fakeroot, libxml2-dev, libxslt1-d
 Package: hiawatha
 Architecture: any
 Depends: ${shlibs:Depends}, logrotate
-Suggests: php5-cgi
+Suggests: php5-fpm
 Conflicts:
 Provides: httpd, httpd-cgi
 Description: Advanced and secure webserver for Unix

@@ -53,6 +53,7 @@ make install DESTDIR=`pwd`/debian/hiawatha
 echo "-- Building package"
 dh_strip
 gzip -9 debian/hiawatha/usr/share/man/man1/*
+sed "s/#ServerId/ServerId/" config/hiawatha.conf > debian/hiawatha/etc/hiawatha/hiawatha.conf
 cp -r logrotate.d debian/hiawatha/etc
 cp -r ../extra/debian/init.d debian/hiawatha/etc
 chmod 755 debian/hiawatha/etc/init.d/*

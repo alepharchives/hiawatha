@@ -83,8 +83,6 @@ typedef struct type_error_handler {
 	struct type_error_handler *next;
 } t_error_handler;
 
-void sfree(void *ptr);
-
 t_headerfield *parse_headerfields(char *line);
 char *get_headerfield(char *key, t_headerfield *headerfields);
 t_headerfield *remove_headerfields(t_headerfield *headerfields);

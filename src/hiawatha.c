@@ -103,6 +103,7 @@ char *fb_filesystem  = "access denied via filesystem";
 char *fb_symlink     = "symlink not allowed";
 char *fb_accesslist  = "access denied via accesslist";
 char *fb_alterlist   = "access denied via alterlist";
+char *unknown_host   = "(unknown)";
 char *version_string = "Hiawatha v"VERSION
 #ifdef ENABLE_CACHE
 	", cache"
@@ -837,6 +838,8 @@ void handle_timeout(t_session *session) {
 /* Request has been handled, handle the return code.
  */
 void handle_request_result(t_session *session, int result) {
+	char *hostname;
+
 #ifdef ENABLE_DEBUG
 	session->current_task = "handle request result";
 #endif
@@ -882,7 +885,8 @@ void handle_request_result(t_session *session, int result) {
 		case ec_SQL_INJECTION:
 			if ((session->config->ban_on_sqli > 0) && (ip_allowed(&(session->ip_address), session->config->banlist_mask) != deny)) {
 				ban_ip(&(session->ip_address), session->config->ban_on_sqli, session->config->kick_on_ban);
-				log_system(session, "Client banned because of SQL injection");
+				hostname = (session->hostname != NULL) ? session->hostname : unknown_host;
+				log_system(session, "Client banned because of SQL injection on %s", hostname);
 #ifdef ENABLE_MONITOR
 				if (session->config->monitor_enabled) {
 					monitor_counter_ban(session);
@@ -896,7 +900,8 @@ void handle_request_result(t_session *session, int result) {
 		case ec_INVALID_URL:
 			if ((session->config->ban_on_invalid_url > 0) && (ip_allowed(&(session->ip_address), session->config->banlist_mask) != deny)) {
 				ban_ip(&(session->ip_address), session->config->ban_on_invalid_url, session->config->kick_on_ban);
-				log_system(session, "Client banned because of invalid URL");
+				hostname = (session->hostname != NULL) ? session->hostname : unknown_host;
+				log_system(session, "Client banned because of invalid URL on %s", hostname);
 #ifdef ENABLE_MONITOR
 				if (session->config->monitor_enabled) {
 					monitor_counter_ban(session);
@@ -993,7 +998,6 @@ void handle_request_result(t_session *session, int result) {
 void connection_handler(t_session *session) {
 	int result;
 #ifdef ENABLE_SSL
-	int timeout;
 	t_ssl_accept_data sad;
 #endif
 #ifdef ENABLE_MONITOR
@@ -1013,19 +1017,20 @@ void connection_handler(t_session *session) {
 
 #ifdef ENABLE_SSL
 	if (session->binding->use_ssl) {
-		timeout = session->kept_alive == 0 ? session->binding->time_for_1st_request : session->binding->time_for_request;
+		sad.context         = &(session->ssl_context);
+		sad.client_fd       = &(session->client_socket);
+		sad.private_key     = session->binding->private_key;
+		sad.certificate     = session->binding->certificate;
+		sad.ca_certificate  = session->binding->ca_certificate;
+		sad.ca_crl          = session->binding->ca_crl;
 
-		sad.context        = &(session->ssl_context);
-		sad.client_fd      = &(session->client_socket);
-		sad.private_key    = session->binding->private_key;
-		sad.certificate    = session->binding->certificate;
-		sad.ca_certificate = session->binding->ca_certificate;
-		sad.ca_crl         = session->binding->ca_crl;
-
+		sad.timeout         = session->kept_alive == 0 ? session->binding->time_for_1st_request : session->binding->time_for_request;
+		sad.min_ssl_version = session->config->min_ssl_version;
+		sad.dh_size         = session->config->dh_size;
 #ifdef ENABLE_DEBUG
 		session->current_task = "ssl accept";
 #endif
-		switch (ssl_accept(&sad, timeout, session->config->min_ssl_version)) {
+		switch (ssl_accept(&sad)) {
 			case -2:
 				handle_timeout(session);
 				break;

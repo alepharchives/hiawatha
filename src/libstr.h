@@ -17,6 +17,12 @@
 #include <stdbool.h>
 #include <regex.h>
 
+#define CHECK_USE_STRLEN -1
+
+void check_free(void *ptr);
+void clear_free(void *ptr, int size);
+void check_clear_free(void *ptr, int size);
+
 int  str2int(char *str);
 char *remove_spaces(char *str);
 char *uncomment(char *str);

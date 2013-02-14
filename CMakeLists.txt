@@ -29,7 +29,7 @@ include(cmake/CopyIfNotExists.cmake)
 
 # Settings
 set(HIAWATHA_VERSION_MAJOR 8)
-set(HIAWATHA_VERSION_MINOR 6)
+set(HIAWATHA_VERSION_MINOR 7)
 set(HIAWATHA_VERSION_PATCH 0)
 string(TOLOWER ${CMAKE_PROJECT_NAME} PROJECT_NAME)
 if(${HIAWATHA_VERSION_PATCH} EQUAL 0)
@@ -115,7 +115,6 @@ configure_file(extra/logrotate.in logrotate.d/hiawatha)
 # Binaries
 add_executable(cgi-wrapper ${cgi_wrapper_src})
 add_executable(hiawatha ${hiawatha_src})
-add_executable(php-fcgi ${php_fcgi_src})
 add_executable(ssi-cgi ${ssi_cgi_src})
 add_executable(wigwam ${wigwam_src})
 target_link_libraries(wigwam ${CRYPT_LIBRARY})
@@ -129,7 +128,7 @@ if(ENABLE_XSLT)
 endif()
 
 # Installation
-install(TARGETS hiawatha php-fcgi wigwam DESTINATION ${CMAKE_INSTALL_SBINDIR})
+install(TARGETS hiawatha wigwam DESTINATION ${CMAKE_INSTALL_SBINDIR})
 install(TARGETS cgi-wrapper DESTINATION ${CMAKE_INSTALL_SBINDIR}
 	PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE SETUID)
 install(TARGETS ssi-cgi DESTINATION ${CMAKE_INSTALL_BINDIR})

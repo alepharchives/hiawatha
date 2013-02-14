@@ -38,9 +38,6 @@ See chapters SERVER CONFIGURATION, BINDING CONFIGURATION, VIRTUAL HOST CONFIGURA
 .B mimetype.conf
 See chapter MIMETYPES for more information.
 .TP
-.B php-fcgi.conf
-See php-fcgi(1) for more information.
-.TP
 .B .hiawatha
 See chapter USER SETTINGS PER DIRECTORY for more information.
 
@@ -166,6 +163,11 @@ Default = 10, example: ConnectionsPerIP = 5
 Maximum number of simultaneous connections.
 .br
 Default = 100, example: ConnectionsTotal = 250
+.TP
+.B DHsize = 1024|2048|4096
+Set the size of the Diffie-Hellman key.
+.br
+Default = PolarSSL's default key size (=1024), Example: DHsize = 4096
 .TP
 .B ExploitLogfile = <filename with full path>
 Logfile for all exploit attempts: CSRF, denied bodies, SQL injection and XSS
@@ -540,8 +542,8 @@ Default = no, example: RequireSSL = yes
 
 (requires that Hiawatha was not compiled with -DENABLE_SSL=off)
 .TP
-.B ReverseProxy <pattern> http[s]://<hostname>[:<port>][/<path>]
-Forward the request with URLs that match the regular expression <pattern> to another webserver, where <path> is placed before the original URL. Note that the reverse proxy selection comes before the URL toolkit handling. When <hostname> is an IP address, the value of the Host HTTP header is unchanged. Otherwise, it is replaced with the value of <hostname>.
+.B ReverseProxy <pattern> http[s]://<hostname>[:<port>][/<path>] [<timeout>]
+Forward the request with URLs that match the regular expression <pattern> to another webserver, where <path> is placed before the original URL. Note that the reverse proxy selection comes before the URL toolkit handling. When <hostname> is an IP address, the value of the Host HTTP header is unchanged. Otherwise, it is replaced with the value of <hostname>. The connection is closed after <timeout> seconds.
 .br
 Example: ReverseProxy ^/icons http://resources.lan/images
 .TP
@@ -694,7 +696,7 @@ and
 
 .\" ==========[ FastCGI configuration ]========================================
 .SH FASTCGI CONFIGURATION
-This chapter explains how to use one or more FastCGI servers. Use the 'php-fcgi' tool to start PHP as a FastCGI daemon.
+This chapter explains how to use one or more FastCGI servers.
 .TP
 .B ConnectTo = <ip-address>:<port number>|<path>[, <ip-address>:<port number>|<path>, ...]
 The IP-address and TCP port or UNIX socket Hiawatha must connect to to reach the FastCGI server.
@@ -962,12 +964,10 @@ Clear the internal cache (requires that Hiawatha was not compiled with -DENABLE_
 .B /etc/hiawatha/mime.types
 .br
 .B /etc/hiawatha/cgi-wrapper.conf
-.br
-.B /etc/hiawatha/php-fcgi.conf
 
 
 .SH SEE ALSO
-cgi-wrapper(1), php-fcgi(1), newroot(1), ssi-cgi(1), wigwam(1)
+cgi-wrapper(1), newroot(1), ssi-cgi(1), wigwam(1)
 
 
 .SH AUTHOR

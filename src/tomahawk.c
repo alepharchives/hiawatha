@@ -35,7 +35,7 @@
 
 static t_admin *adminlist;
 static int current_admin;
-static char *prompt = "\033[01;34mhcc>\033[00m ";
+static char *prompt = "\033[01;34mtomahawk>\033[00m ";
 
 static pthread_mutex_t tomahawk_mutex;
 
@@ -424,6 +424,8 @@ int handle_admin(t_admin *admin, t_config *config) {
 			pwd = remove_spaces(line);
 			md5((unsigned char*)pwd, strlen(pwd), digest);
 			md5_bin2hex(digest, encrypted);
+			memset(line, 0, MAX_CMD_SIZE);
+
 			if ((admin->authenticated = (strcmp(encrypted, config->tomahawk_port->binding_id) == 0)) == false) {
 				retval = cc_DISCONNECT;
 				fprintf(admin->fp, "Password incorrect\n\n");

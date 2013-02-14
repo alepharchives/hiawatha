@@ -25,7 +25,7 @@ int default_ipv4(t_ip_addr *ip_addr) {
 		return -1;
 	}
 
-	memset(ip_addr->value, '\0', IPv4_LEN);
+	memset(ip_addr->value, 0, IPv4_LEN);
 	ip_addr->family = AF_INET;
 	ip_addr->size = IPv4_LEN;
 
@@ -40,7 +40,7 @@ int default_ipv6(t_ip_addr *ip_addr) {
 		return -1;
 	}
 
-	memset(ip_addr->value, '\0', IPv6_LEN);
+	memset(ip_addr->value, 0, IPv6_LEN);
 	ip_addr->family = AF_INET6;
 	ip_addr->size = IPv6_LEN;
 

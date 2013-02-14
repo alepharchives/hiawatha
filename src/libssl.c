@@ -13,7 +13,7 @@
 
 #ifdef ENABLE_SSL
 
-#define ENABLE_DEBUG_LEVEL      0
+#define SSL_DEBUG_LEVEL         6
 #define TIMESTAMP_SIZE         40
 #define SNI_MAX_HOSTNAME_LEN  128
 
@@ -23,7 +23,6 @@
 #include <string.h>
 #include <syslog.h>
 #include <pthread.h>
-#include <sys/select.h>
 #include <sys/socket.h>
 #include "alternative.h"
 #include "libssl.h"
@@ -57,6 +56,31 @@ static int ciphersuites[] = {
 	TLS_RSA_WITH_AES_256_CBC_SHA,
 	0
 };
+
+static char *dhm_4096_P =
+	"FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD1"
+	"29024E088A67CC74020BBEA63B139B22514A08798E3404DD"
+	"EF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245"
+	"E485B576625E7EC6F44C42E9A637ED6B0BFF5CB6F406B7ED"
+	"EE386BFB5A899FA5AE9F24117C4B1FE649286651ECE45B3D"
+	"C2007CB8A163BF0598DA48361C55D39A69163FA8FD24CF5F"
+	"83655D23DCA3AD961C62F356208552BB9ED529077096966D"
+	"670C354E4ABC9804F1746C08CA18217C32905E462E36CE3B"
+	"E39E772C180E86039B2783A2EC07A28FB5C55DF06F4C52C9"
+	"DE2BCBF6955817183995497CEA956AE515D2261898FA0510"
+	"15728E5A8AAAC42DAD33170D04507A33A85521ABDF1CBA64"
+	"ECFB850458DBEF0A8AEA71575D060C7DB3970F85A6E1E4C7"
+	"ABF5AE8CDB0933D71E8C94E04A25619DCEE3D2261AD2EE6B"
+	"F12FFA06D98A0864D87602733EC86A64521F2B18177B200C"
+	"BBE117577A615D6C770988C0BAD946E208E24FA074E5AB31"
+	"43DB5BFCE0FD108E4B82D120A92108011A723C12A787E6D7"
+	"88719A10BDBA5B2699C327186AF4E23C1A946834B6150BDA"
+	"2583E9CA2AD44CE8DBBBC2DB04DE8EF92E8EFC141FBECAA6"
+	"287C59474E6BC05D99B2964FA090C3A2233BA186515BE7ED"
+	"1F612970CEE2D7AFB81BDD762170481CD0069127D5B05AA9"
+	"93B4EA988D8FDDC186FFB7DC90A6C08F4DF435C934063199"
+	"FFFFFFFFFFFFFFFF";
+static char *dhm_4096_G = "02";
 
 static char *ssl_error_logfile;
 static rsa_context rsa;
@@ -109,13 +133,15 @@ int ssl_register_sni(t_charlist *hostname, rsa_context *private_key, x509_cert *
 
 /* SSL debug callback function
  */
+#ifdef ENABLE_DEBUG
 static void ssl_debug(void UNUSED(*ctx), int level, const char *str) {
-	if (level >= ENABLE_DEBUG_LEVEL) {
+	if (level >= SSL_DEBUG_LEVEL) {
 		return;
 	}
 
-	log_string(ssl_error_logfile, "PolarSSL error|%s", str);
+	log_string(ssl_error_logfile, "PolarSSL:%s", str);
 }
+#endif
 
 /* Required to use random number generator functions in a multithreaded application
  */
@@ -268,7 +294,7 @@ static int sni_callback(void UNUSED(*parameter), ssl_context *context, const uns
 
 /* Accept incoming SSL connection
  */
-int ssl_accept(t_ssl_accept_data *sad, int timeout, int min_ssl_version) {
+int ssl_accept(t_ssl_accept_data *sad) {
 	int result, handshake, skip;
 	struct timeval timer;
 	time_t start_time;
@@ -285,17 +311,19 @@ int ssl_accept(t_ssl_accept_data *sad, int timeout, int min_ssl_version) {
 		ssl_set_ca_chain(sad->context, sad->ca_certificate, sad->ca_crl, NULL);
 	}
 
-	ssl_set_min_version(sad->context, SSL_MAJOR_VERSION_3, min_ssl_version);
+	ssl_set_min_version(sad->context, SSL_MAJOR_VERSION_3, sad->min_ssl_version);
 	ssl_set_renegotiation(sad->context, SSL_RENEGOTIATION_DISABLED);
 
 	ssl_set_rng(sad->context, ssl_random, &ctr_drbg);
+#ifdef ENABLE_DEBUG
 	ssl_set_dbg(sad->context, ssl_debug, stderr);
+#endif
 	ssl_set_bio(sad->context, net_recv, sad->client_fd, net_send, sad->client_fd);
 	ssl_set_sni(sad->context, sni_callback, NULL);
 
 	ssl_set_session_cache(sad->context, ssl_get_cache, &cache, ssl_set_cache, &cache);
 
-	if ((min_ssl_version >= SSL_MINOR_VERSION_2) && (ciphersuites[0] == TLS_RSA_WITH_RC4_128_SHA)) {
+	if ((sad->min_ssl_version >= SSL_MINOR_VERSION_2) && (ciphersuites[0] == TLS_RSA_WITH_RC4_128_SHA)) {
 		skip = 1;
 	} else {
 		skip = 0;
@@ -303,9 +331,15 @@ int ssl_accept(t_ssl_accept_data *sad, int timeout, int min_ssl_version) {
 	ssl_set_ciphersuites(sad->context, ciphersuites + skip);
 
 	ssl_set_own_cert(sad->context, sad->certificate, sad->private_key);
-	ssl_set_dh_param(sad->context, POLARSSL_DHM_RFC5114_MODP_2048_P, POLARSSL_DHM_RFC5114_MODP_2048_G);
+	if (sad->dh_size == 1024) {
+		ssl_set_dh_param(sad->context, POLARSSL_DHM_RFC5114_MODP_1024_P, POLARSSL_DHM_RFC5114_MODP_1024_G);
+	} else if (sad->dh_size == 2048) {
+		ssl_set_dh_param(sad->context, POLARSSL_DHM_RFC5114_MODP_2048_P, POLARSSL_DHM_RFC5114_MODP_2048_G);
+	} else if (sad->dh_size == 4096) {
+		ssl_set_dh_param(sad->context, dhm_4096_P, dhm_4096_G);
+	}
 
-	timer.tv_sec = timeout;
+	timer.tv_sec = sad->timeout;
 	timer.tv_usec = 0;
 	setsockopt(*(sad->client_fd), SOL_SOCKET, SO_RCVTIMEO, (void*)&timer, sizeof(struct timeval));
 	start_time = time(NULL);
@@ -318,7 +352,7 @@ int ssl_accept(t_ssl_accept_data *sad, int timeout, int min_ssl_version) {
 			result = -1;
 			break;
 		}
-		if (time(NULL) - start_time >= timeout) {
+		if (time(NULL) - start_time >= sad->timeout) {
 			ssl_free(sad->context);
 			sad->context = NULL;
 			result = -2;
@@ -420,7 +454,9 @@ int ssl_connect(ssl_context *ssl, int *sock, char *hostname) {
 	ssl_set_authmode(ssl, SSL_VERIFY_NONE);
 
 	ssl_set_rng(ssl, ssl_random, &ctr_drbg);
+#ifdef ENABLE_DEBUG
 	ssl_set_dbg(ssl, ssl_debug, stderr);
+#endif
 	ssl_set_bio(ssl, net_recv, sock, net_send, sock);
 
 	if (hostname != NULL) {

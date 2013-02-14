@@ -30,7 +30,7 @@ The following path settings are available for cmake.
 	-DCMAKE_INSTALL_MANDIR=<path>      Manual pages will be installed in <path>/man1.
 	-DCONFIG_DIR=<path>                Location of the Hiawatha configuration files.
 	-DLOG_DIR=<path>                   Log directory used in the default hiawatha.conf.
-	-DPID_DIR=<path>                   Location of the Hiawatha and php-fcgi PID files.
+	-DPID_DIR=<path>                   Location of the Hiawatha PID file.
 	-DWEBROOT_DIR=<path>               Webroot directory used in the default hiawatha.conf.
 	-DWORK_DIR=<path>                  Path of directory where Hiawatha can write temporary files.
 

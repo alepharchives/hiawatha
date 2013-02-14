@@ -36,8 +36,9 @@ make
 
 # Make MacOS X package
 #
-strip cgi-wrapper hiawatha php-fcgi ssi-cgi wigwam
+strip cgi-wrapper hiawatha ssi-cgi wigwam
 make install DESTDIR=`pwd`/root
+sed "s/#ServerId = www-data/ServerId = _www/" config/hiawatha.conf > root/usr/local/etc/hiawatha/hiawatha.conf
 mkdir -p root/Library/PreferencePanes
 cp -r ../extra/macosx/HiawathaWebserver.prefPane root/Library/PreferencePanes
 mkdir -p root/Library/LaunchDaemons

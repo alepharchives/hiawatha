@@ -611,6 +611,9 @@ int mpi_shift_r( mpi *X, size_t count )
     v0 = count /  biL;
     v1 = count & (biL - 1);
 
+    if( v0 > X->n || ( v0 == X->n && v1 > 0 ) )
+        return mpi_lset( X, 0 );
+
     /*
      * shift by count / limb_size
      */
@@ -1195,9 +1198,9 @@ int mpi_div_mpi( mpi *Q, mpi *R, const mpi *A, const mpi *B )
     if( R != NULL )
     {
         mpi_shift_r( &X, k );
+        X.s = A->s;
         mpi_copy( R, &X );
 
-        R->s = A->s;
         if( mpi_cmp_int( R, 0 ) == 0 )
             R->s = 1;
     }
@@ -1212,10 +1215,6 @@ cleanup:
 
 /*
  * Division by int: A = Q * b + R
- *
- * Returns 0 if successful
- *         1 if memory allocation failed
- *         POLARSSL_ERR_MPI_DIVISION_BY_ZERO if b == 0
  */
 int mpi_div_int( mpi *Q, mpi *R, const mpi *A, t_sint b )
 {
@@ -1652,8 +1651,6 @@ cleanup:
     return( ret );
 }
 
-#if defined(POLARSSL_GENPRIME)
-
 /*
  * Modular inverse: X = A^-1 mod N  (HAC 14.61 / 14.64)
  */
@@ -1748,6 +1745,8 @@ cleanup:
 
     return( ret );
 }
+
+#if defined(POLARSSL_GENPRIME)
 
 static const int small_prime[] =
 {
