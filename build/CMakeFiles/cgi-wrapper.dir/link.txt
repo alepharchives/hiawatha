@@ -1,1 +1,0 @@
-/usr/bin/clang  -Wall -Wextra -O2 -g    CMakeFiles/cgi-wrapper.dir/src/alternative.c.o CMakeFiles/cgi-wrapper.dir/src/cgi-wrapper.c.o CMakeFiles/cgi-wrapper.dir/src/userconfig.c.o CMakeFiles/cgi-wrapper.dir/src/libfs.c.o CMakeFiles/cgi-wrapper.dir/src/libstr.c.o  -o cgi-wrapper -rdynamic 

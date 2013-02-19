@@ -1,5 +1,0 @@
-/home/hugo/projects/hiawatha/build/CMakeFiles/cgi-wrapper.dir
-/home/hugo/projects/hiawatha/build/CMakeFiles/hiawatha.dir
-/home/hugo/projects/hiawatha/build/polarssl/library/CMakeFiles/polarssl.dir
-/home/hugo/projects/hiawatha/build/CMakeFiles/ssi-cgi.dir
-/home/hugo/projects/hiawatha/build/CMakeFiles/wigwam.dir
