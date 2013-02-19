@@ -24,7 +24,7 @@ GREEN="\033[00;32m"
 
 if [ ! -f ${HIAWATHA} ]; then
 	echo -e "${HIAWATHA} not found."
-	exit 1;
+	exit 5
 fi
 
 function start_hiawatha {
@@ -71,6 +71,7 @@ function stop_hiawatha {
 		echo -e "Hiawatha${NORMAL}"
 	else
 		echo -e "${YELLOW}Hiawatha is not running${NORMAL}"
+		exit 7
 	fi
 }
 
@@ -83,10 +84,14 @@ function config_check {
 }
 
 function show_status {
-	if [ -f $PIDFILE ] && ps `cat $PIDFILE` >/dev/null 2>&1; then
+	if [ ! -f $PIDFILE ]; then
+		echo -e "${RED}Hiawatha is not running${NORMAL}"
+		exit 3
+	elif ps `cat $PIDFILE` >/dev/null 2>&1; then
 		echo -e "${GREEN}Hiawatha is running${NORMAL}"
 	else
-		echo -e "${RED}Hiawatha is not running${NORMAL}"
+		echo -e "${RED}Hiawatha is not running but PID file exists${NORMAL}"
+		return 1
 	fi
 }
 
@@ -109,6 +114,9 @@ case "$1" in
 		;;
 	*)
 		echo "Usage: $0 {start|stop|restart|force-reload|check|status}"
+		if [ "$1" = "reload" ]; then
+			exit 3
+		fi
 		exit 1
 		;;
 esac

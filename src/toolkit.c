@@ -65,7 +65,7 @@ static int replace(char *src, int ofs, int len, char *rep, char **dst) {
 bool toolkit_setting(char *key, char *value, t_url_toolkit *toolkit) {
 	t_toolkit_rule *new_rule, *rule;
 	char *rest;
-	int loop, time;
+	int loop, time, cflags;
 
 	if ((key == NULL) || (value == NULL) || (toolkit == NULL)) {
 		return false;
@@ -94,15 +94,26 @@ bool toolkit_setting(char *key, char *value, t_url_toolkit *toolkit) {
 	new_rule->match_loop = 1;
 	new_rule->parameter = NULL;
 	new_rule->value = 0;
+	new_rule->case_insensitive = false;
 	new_rule->next = NULL;
+
+	if (strcmp(key, "matchci") == 0) {
+		new_rule->case_insensitive = true;
+		key = "match";
+	}
 
 	if (strcmp(key, "match") == 0) {
 		/* Match
 		 */
+		cflags = REG_EXTENDED;
+		if (new_rule->case_insensitive) {
+			cflags |= REG_ICASE;
+		}
+
 		new_rule->condition = tc_match;
 		if (split_string(value, &value, &rest, ' ') == -1) {
 			return false;
-		} else if (regcomp(&(new_rule->pattern), value, REG_EXTENDED) != 0) {
+		} else if (regcomp(&(new_rule->pattern), value, cflags) != 0) {
 			return false;
 		}
 		split_string(rest, &value, &rest, ' ');
@@ -470,7 +481,7 @@ void init_toolkit_options(t_toolkit_options *options, char *website_root, t_url_
 #ifdef ENABLE_SSL
 	                      bool use_ssl,
 #endif
-						  bool allow_dot_files, t_headerfield *headerfields) {
+						  bool allow_dot_files, t_http_header *http_headers) {
 	options->sub_depth = 0;
 	options->new_url = NULL;
 	options->website_root = website_root;
@@ -482,7 +493,7 @@ void init_toolkit_options(t_toolkit_options *options, char *website_root, t_url_
 	options->use_ssl = use_ssl;
 #endif
 	options->allow_dot_files = allow_dot_files;
-	options->headerfields = headerfields;
+	options->http_headers = http_headers;
 }
 
 int use_toolkit(char *url, char *toolkit_id, t_toolkit_options *options) {
@@ -582,7 +593,7 @@ int use_toolkit(char *url, char *toolkit_id, t_toolkit_options *options) {
 			case tc_oldbrowser:
 				/* Old browser
 				 */
-				if ((user_agent = get_headerfield("User-Agent:", options->headerfields)) != NULL) {
+				if ((user_agent = get_http_header("User-Agent:", options->http_headers)) != NULL) {
 					if (strstr(user_agent, "MSIE 7") != NULL) {
 						condition_met = true;
 					} else if (strstr(user_agent, "MSIE 6") != NULL) {

@@ -1,3 +1,14 @@
+hiawatha (8.8) stable; urgency=low
+
+  * Caching for Reverse Proxy. CacheRProxyExtensions option added.
+  * Basic HTTP authentication now supports the glibc2 version of crypt().
+  * Hostname in ImageReferer can now contain a wildcard.
+  * DenyBody matching is now case insensitive.
+  * PolarSSL updated to version 1.2.5.
+  * Small improvements.
+
+ -- Hugo Leisink <hugo@leisink.net>  Mon, 18 Feb 2013 22:05:46 +0100
+
 hiawatha (8.7) stable; urgency=low
 
   * Support for HTTP Strict Transport Security (RFC 6797). Integrated
@@ -1093,7 +1104,7 @@ hiawatha (0.7) stable; urgency=low
   * StartFile added to the configurationfile.
   * ErrorHandler added to the configurationfile.
   * The number of total connections can be limited.
-  * The processortime for a CGI process can be limited.
+  * The runtime for a CGI process can be limited.
   * Cookie support.
   * HTTP_USER_AGENT, HTTP_X_FORWARDED_FOR and HTTP_REFERER variables are passed
     thru to a CGI script.

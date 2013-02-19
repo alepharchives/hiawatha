@@ -1,5 +1,28 @@
 PolarSSL ChangeLog
 
+= Version 1.2.5 released 2013-02-02
+Changes
+   * Allow enabling of dummy error_strerror() to support some use-cases
+   * Debug messages about padding errors during SSL message decryption are
+     disabled by default and can be enabled with POLARSSL_SSL_DEBUG_ALL 
+   * Sending of security-relevant alert messages that do not break
+     interoperability can be switched on/off with the flag
+	 POLARSSL_SSL_ALL_ALERT_MESSAGES
+
+Security
+   * Removed timing differences during SSL message decryption in
+     ssl_decrypt_buf() due to badly formatted padding
+
+= Version 1.2.4 released 2013-01-25
+Changes
+   * Added ssl_handshake_step() to allow single stepping the handshake process
+
+Bugfix
+   * Memory leak when using RSA_PKCS_V21 operations fixed
+   * Handle future version properly in ssl_write_certificate_request()
+   * Correctly handle CertificateRequest message in client for <= TLS 1.1
+     without DN list
+
 = Version 1.2.3 released 2012-11-26
 Bugfix
    * Server not always sending correct CertificateRequest message
@@ -91,6 +114,30 @@ Bugfix
      with carry rollover (found by Ruslan Yushchenko)
    * Handle existence of OpenSSL Trust Extensions at end of X.509 DER blob
    * Fixed MPI assembly for SPARC64 platform
+
+Security
+   * Fixed potential memory zeroization on miscrafted RSA key (found by Eloi
+     Vanderbeken)
+
+= Version 1.1.5 released on 2013-01-16
+Bugfix
+   * Fixed MPI assembly for SPARC64 platform
+   * Handle existence of OpenSSL Trust Extensions at end of X.509 DER blob
+   * mpi_add_abs() now correctly handles adding short numbers to long numbers
+     with carry rollover
+   * Moved mpi_inv_mod() outside POLARSSL_GENPRIME
+   * Prevent reading over buffer boundaries on X509 certificate parsing
+   * mpi_exp_mod() now correctly handles negative base numbers (Closes ticket
+     #52)
+   * Fixed possible segfault in mpi_shift_r() (found by Manuel
+     Pégourié-Gonnard)
+   * Allow R and A to point to same mpi in mpi_div_mpi (found by Manuel
+     Pégourié-Gonnard)
+   * Added max length check for rsa_pkcs1_sign with PKCS#1 v2.1
+   * Memory leak when using RSA_PKCS_V21 operations fixed
+   * Handle encryption with private key and decryption with public key as per
+     RFC 2313
+   * Fixes for MSVC6
 
 Security
    * Fixed potential memory zeroization on miscrafted RSA key (found by Eloi

@@ -201,12 +201,43 @@ static char *get_A1(t_session *session, char *username, char *realm) {
 	return result;
 }
 
+/* Find algoritm id and salt in password
+ */
+static int find_algoritm_and_salt(char *line) {	
+	char *end;
+
+	end = line;
+	if (*end != '$') {
+		return -1;
+	}
+	end++;
+
+	if ((*end != '1') && (*end != '5') && (*end != '6')) {
+		return -1;
+	}
+	end++;
+
+	if (*end != '$') {
+		return -1;
+	}
+
+	do {
+		end++;
+	} while ((*end != '\0') && (*end != '$'));
+
+	if (*end == '\0') {
+		return -1;
+	}
+
+	return end - line + 1;
+}
+
 /* Basic HTTP authentication.
  */
 static int basic_http_authentication(t_session *session, char *auth_str) {
 	size_t auth_len;
-	int retval;
-	char *auth_user, *auth_passwd, *passwd, *encrypted, salt[3];
+	int retval, len;
+	char *auth_user, *auth_passwd, *passwd, *encrypted, salt[21];
 
 	auth_len = strlen(auth_str);
 	if ((auth_user = (char*)malloc(auth_len + 1)) == NULL) {
@@ -220,6 +251,7 @@ static int basic_http_authentication(t_session *session, char *auth_str) {
 		clear_free(auth_user, auth_len);
 		return ha_DENIED;
 	}
+	*(auth_user + auth_len) = '\0';
 
 	/* Search for password
 	 */
@@ -249,9 +281,16 @@ static int basic_http_authentication(t_session *session, char *auth_str) {
 		return ha_DENIED;
 	}
 
-	salt[0] = *passwd;
-	salt[1] = *(passwd + 1);
-	salt[2] = '\0';
+	len = find_algoritm_and_salt(passwd);
+	if ((len != -1) && (len <= 20)) {
+		memcpy(salt, passwd, len);
+		salt[len] = '\0';
+	} else {
+		salt[0] = *passwd;
+		salt[1] = *(passwd + 1);
+		salt[2] = '\0';
+	}
+
 	encrypted = crypt(auth_passwd, salt);
 
 	/* Password match?
@@ -412,7 +451,7 @@ int http_authentication_result(t_session *session, bool access_on_pwdfile_missin
 
 	if (session->host->passwordfile == NULL) {
 		return access_on_pwdfile_missing ? ha_ALLOWED : ha_DENIED;
-	} else if ((auth_str = get_headerfield("Authorization:", session->headerfields)) != NULL) {
+	} else if ((auth_str = get_http_header("Authorization:", session->http_headers)) != NULL) {
 		if ((auth_str = strdup(auth_str)) == NULL) {
 			return ha_ERROR;
 		}

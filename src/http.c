@@ -362,11 +362,11 @@ int parse_request(t_session *session, int total_bytes) {
 	if (session->content_length > 0) {
 		session->body = session->request + session->header_length;
 	}
-	session->headerfields = parse_headerfields(str_end + 3);
-	session->hostname = strlower(get_headerfield("Host:", session->headerfields));
-	session->cookie = get_headerfield("Cookie:", session->headerfields);
+	session->http_headers = parse_http_headers(str_end + 3);
+	session->hostname = strlower(get_http_header("Host:", session->http_headers));
+	session->cookie = get_http_header("Cookie:", session->http_headers);
 
-	if ((conn = get_headerfield("Connection:", session->headerfields)) != NULL) {
+	if ((conn = get_http_header("Connection:", session->http_headers)) != NULL) {
 		conn = strlower(remove_spaces(conn));
 	}
 	session->keep_alive = false;

@@ -90,14 +90,14 @@ static int add_to_environment_chroot(t_session *session, t_fcgi_buffer *fcgi_buf
 	return add_to_environment(fcgi_buffer, key, value + ofs);
 }
 
-/* Copy a headerfield to an environment setting
+/* Copy a http_header to an environment setting
  */
-int headerfield_to_environment(t_session *session, t_fcgi_buffer *fcgi_buffer, char *key, char *envir) {
+int http_header_to_environment(t_session *session, t_fcgi_buffer *fcgi_buffer, char *key, char *envir) {
 	char *value;
 
 	if ((key == NULL) || (envir == NULL)) {
 		return 0;
-	} else if ((value = get_headerfield(key, session->headerfields)) != NULL) {
+	} else if ((value = get_http_header(key, session->http_headers)) != NULL) {
 		return add_to_environment(fcgi_buffer, envir, value);
 	} else {
 		return 0;
@@ -110,7 +110,7 @@ void set_environment(t_session *session, t_fcgi_buffer *fcgi_buffer) {
 	char ip[MAX_IP_STR_LEN], len[20], value[10], *data, variable[MAX_HEADER_LEN], old;
 	size_t len1, len2, path_info_len;
 	bool has_path_info = false;
-	t_headerfield *headerfields;
+	t_http_header *http_headers;
 	t_keyvalue *envir;
 #ifdef ENABLE_SSL
 	char subject[SSL_VAR_SIZE], issuer[SSL_VAR_SIZE];
@@ -177,7 +177,7 @@ void set_environment(t_session *session, t_fcgi_buffer *fcgi_buffer) {
 		len[19] = '\0';
 		snprintf(len, 19, "%ld", session->content_length);
 		add_to_environment(fcgi_buffer, "CONTENT_LENGTH", len);
-		headerfield_to_environment(session, fcgi_buffer, "Content-Type:", "CONTENT_TYPE");
+		http_header_to_environment(session, fcgi_buffer, "Content-Type:", "CONTENT_TYPE");
 	}
 
 	value[9] = '\0';
@@ -203,47 +203,47 @@ void set_environment(t_session *session, t_fcgi_buffer *fcgi_buffer) {
 		add_to_environment(fcgi_buffer, "REMOTE_USER", session->remote_user);
 	}
 
-	headerfield_to_environment(session, fcgi_buffer, "Accept:", "HTTP_ACCEPT");
-	headerfield_to_environment(session, fcgi_buffer, "Accept-Charset:", "HTTP_ACCEPT_CHARSET");
-	headerfield_to_environment(session, fcgi_buffer, "Accept-Encoding:", "HTTP_ACCEPT_ENCODING");
-	headerfield_to_environment(session, fcgi_buffer, "Accept-Language:", "HTTP_ACCEPT_LANGUAGE");
-	headerfield_to_environment(session, fcgi_buffer, "Authorization:", "HTTP_AUTHORIZATION");
-	headerfield_to_environment(session, fcgi_buffer, "Client-IP:", "HTTP_CLIENT_IP");
-	headerfield_to_environment(session, fcgi_buffer, "DNT:", "HTTP_DNT");
-	headerfield_to_environment(session, fcgi_buffer, "Expect:", "HTTP_EXPECT");
-	headerfield_to_environment(session, fcgi_buffer, "From:", "HTTP_FROM");
-	headerfield_to_environment(session, fcgi_buffer, "Host:", "HTTP_HOST");
-	headerfield_to_environment(session, fcgi_buffer, "If-Modified-Since:", "HTTP_IF_MODIFIED_SINCE");
-	headerfield_to_environment(session, fcgi_buffer, "If-Unmodified-Since:", "HTTP_IF_UNMODIFIED_SINCE");
-	headerfield_to_environment(session, fcgi_buffer, "Range:", "HTTP_RANGE");
-	headerfield_to_environment(session, fcgi_buffer, "Referer:", "HTTP_REFERER");
-	headerfield_to_environment(session, fcgi_buffer, "User-Agent:", "HTTP_USER_AGENT");
-	headerfield_to_environment(session, fcgi_buffer, "Via:", "HTTP_VIA");
+	http_header_to_environment(session, fcgi_buffer, "Accept:", "HTTP_ACCEPT");
+	http_header_to_environment(session, fcgi_buffer, "Accept-Charset:", "HTTP_ACCEPT_CHARSET");
+	http_header_to_environment(session, fcgi_buffer, "Accept-Encoding:", "HTTP_ACCEPT_ENCODING");
+	http_header_to_environment(session, fcgi_buffer, "Accept-Language:", "HTTP_ACCEPT_LANGUAGE");
+	http_header_to_environment(session, fcgi_buffer, "Authorization:", "HTTP_AUTHORIZATION");
+	http_header_to_environment(session, fcgi_buffer, "Client-IP:", "HTTP_CLIENT_IP");
+	http_header_to_environment(session, fcgi_buffer, "DNT:", "HTTP_DNT");
+	http_header_to_environment(session, fcgi_buffer, "Expect:", "HTTP_EXPECT");
+	http_header_to_environment(session, fcgi_buffer, "From:", "HTTP_FROM");
+	http_header_to_environment(session, fcgi_buffer, "Host:", "HTTP_HOST");
+	http_header_to_environment(session, fcgi_buffer, "If-Modified-Since:", "HTTP_IF_MODIFIED_SINCE");
+	http_header_to_environment(session, fcgi_buffer, "If-Unmodified-Since:", "HTTP_IF_UNMODIFIED_SINCE");
+	http_header_to_environment(session, fcgi_buffer, "Range:", "HTTP_RANGE");
+	http_header_to_environment(session, fcgi_buffer, "Referer:", "HTTP_REFERER");
+	http_header_to_environment(session, fcgi_buffer, "User-Agent:", "HTTP_USER_AGENT");
+	http_header_to_environment(session, fcgi_buffer, "Via:", "HTTP_VIA");
 
 	/* Webdav headers
 	 */
 	if (session->host->webdav_app) {
-		headerfield_to_environment(session, fcgi_buffer, "Depth:", "HTTP_DEPTH");
-		headerfield_to_environment(session, fcgi_buffer, "Destination:", "HTTP_DESTINATION");
-		headerfield_to_environment(session, fcgi_buffer, "If:", "HTTP_IF");
-		headerfield_to_environment(session, fcgi_buffer, "Overwrite:", "HTTP_OVERWRITE");
+		http_header_to_environment(session, fcgi_buffer, "Depth:", "HTTP_DEPTH");
+		http_header_to_environment(session, fcgi_buffer, "Destination:", "HTTP_DESTINATION");
+		http_header_to_environment(session, fcgi_buffer, "If:", "HTTP_IF");
+		http_header_to_environment(session, fcgi_buffer, "Overwrite:", "HTTP_OVERWRITE");
 	}
 
 	/* CloudFlare headers
 	 */
-	headerfield_to_environment(session, fcgi_buffer, "CF-Connecting-IP:", "HTTP_CF_CONNECTING_IP");
-	headerfield_to_environment(session, fcgi_buffer, "CF-IPCountry:", "HTTP_CF_IPCOUNTRY");
+	http_header_to_environment(session, fcgi_buffer, "CF-Connecting-IP:", "HTTP_CF_CONNECTING_IP");
+	http_header_to_environment(session, fcgi_buffer, "CF-IPCountry:", "HTTP_CF_IPCOUNTRY");
 
 	/* Convert X-* HTTP headers to HTTP_* environment variables
 	 */
-	headerfields = session->headerfields;
-	while (headerfields != NULL) {
-		if (strncasecmp(headerfields->data, "X-", 2) == 0) {
-			if (header_to_variable(headerfields->data, (char*)&variable, MAX_HEADER_LEN) != -1) {
-				add_to_environment(fcgi_buffer, variable, headerfields->data + headerfields->value_offset);
+	http_headers = session->http_headers;
+	while (http_headers != NULL) {
+		if (strncasecmp(http_headers->data, "X-", 2) == 0) {
+			if (header_to_variable(http_headers->data, (char*)&variable, MAX_HEADER_LEN) != -1) {
+				add_to_environment(fcgi_buffer, variable, http_headers->data + http_headers->value_offset);
 			}
 		}
-		headerfields = headerfields->next;
+		http_headers = http_headers->next;
 	}
 
 #ifdef ENABLE_SSL

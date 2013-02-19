@@ -186,7 +186,7 @@ void log_error(t_session *session, char *mesg) {
 void log_request(t_session *session) {
 	char str[BUFFER_SIZE + 1], timestamp[TIMESTAMP_SIZE], ip_address[IP_ADDRESS_SIZE];
 	char *user, *field, *uri, *vars, *path_info;
-	t_headerfield *headerfield;
+	t_http_header *http_header;
 	int offset;
 	time_t t;
 	struct tm *s;
@@ -246,15 +246,15 @@ void log_request(t_session *session) {
 		}
 
 		if (offset < BUFFER_SIZE) {
-			headerfield = session->headerfields;
-			while (headerfield != NULL) {
-				if ((strncasecmp("Cookie:", headerfield->data, 7) != 0) && (strncasecmp("Authorization:", headerfield->data, 14) != 0)) {
-					snprintf(str + offset, BUFFER_SIZE - offset, "|%s", secure_string(headerfield->data));
+			http_header = session->http_headers;
+			while (http_header != NULL) {
+				if ((strncasecmp("Cookie:", http_header->data, 7) != 0) && (strncasecmp("Authorization:", http_header->data, 14) != 0)) {
+					snprintf(str + offset, BUFFER_SIZE - offset, "|%s", secure_string(http_header->data));
 					if ((offset += strlen(str + offset)) >= BUFFER_SIZE) {
 						break;
 					}
 				}
-				headerfield = headerfield->next;
+				http_header = http_header->next;
 			}
 		}
 	} else {
@@ -290,7 +290,7 @@ void log_request(t_session *session) {
 			 */
 			offset += strlen(str + offset);
 			if (offset < BUFFER_SIZE) {
-				if ((field = get_headerfield("Referer:", session->headerfields)) != NULL) {
+				if ((field = get_http_header("Referer:", session->http_headers)) != NULL) {
 					snprintf(str + offset, BUFFER_SIZE - offset, " \"%s\"", secure_string(field));
 				} else {
 					snprintf(str + offset, BUFFER_SIZE - offset, " \"-\"");
@@ -298,7 +298,7 @@ void log_request(t_session *session) {
 				offset += strlen(str + offset);
 			}
 			if (offset < BUFFER_SIZE) {
-				if ((field = get_headerfield("User-Agent:", session->headerfields)) != NULL) {
+				if ((field = get_http_header("User-Agent:", session->http_headers)) != NULL) {
 					snprintf(str + offset, BUFFER_SIZE - offset, " \"%s\"", secure_string(field));
 				} else {
 					snprintf(str + offset, BUFFER_SIZE - offset, " \"-\"");

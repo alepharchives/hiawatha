@@ -161,6 +161,17 @@
  */
 
 /**
+ * \def POLARSSL_ERROR_STRERROR_DUMMY
+ *
+ * Enable a dummy error function to make use of error_strerror() in
+ * third party libraries easier.
+ *
+ * Disable if you run into name conflicts and want to really remove the
+ * error_strerror()
+ */
+#define POLARSSL_ERROR_STRERROR_DUMMY
+
+/**
  * \def POLARSSL_GENPRIME
  *
  * Requires: POLARSSL_BIGNUM_C, POLARSSL_RSA_C
@@ -226,6 +237,36 @@
  * Enable the checkup functions (*_self_test).
  */
 #define POLARSSL_SELF_TEST
+
+/**
+ * \def POLARSSL_SSL_ALL_ALERT_MESSAGES
+ *
+ * Enable sending of alert messages in case of encountered errors as per RFC.
+ * If you choose not to send the alert messages, PolarSSL can still communicate
+ * with other servers, only debugging of failures is harder.
+ *
+ * The advantage of not sending alert messages, is that no information is given
+ * about reasons for failures thus preventing adversaries of gaining intel.
+ *
+ * Enable sending of all alert messages
+ */
+#define POLARSSL_SSL_ALERT_MESSAGES
+
+/**
+ * \def POLARSSL_SSL_DEBUG_ALL
+ *
+ * Enable the debug messages in SSL module for all issues.
+ * Debug messages have been disabled in some places to prevent timing
+ * attacks due to (unbalanced) debugging function calls.
+ *
+ * If you need all error reporting you should enable this during debugging,
+ * but remove this for production servers that should log as well.
+ *
+ * Uncomment this macro to report all debug messages on errors introducing
+ * a timing side-channel.
+ *
+#define POLARSSL_SSL_DEBUG_ALL
+ */
 
 /**
  * \def POLARSSL_SSL_HW_RECORD_ACCEL

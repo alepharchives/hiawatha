@@ -48,6 +48,7 @@ typedef struct type_toolkit_rule {
 	int match_loop;
 	char *parameter;
 	int value;
+	bool case_insensitive;
 	t_toolkit_flow conditional_flow;
 
 	struct type_toolkit_rule *next;
@@ -72,7 +73,7 @@ typedef struct type_toolkit_options {
 #endif
 	bool allow_dot_files;
 	t_url_toolkit *url_toolkit;
-	t_headerfield *headerfields;
+	t_http_header *http_headers;
 } t_toolkit_options;
 
 t_url_toolkit *find_toolkit(char *toolkit_id, t_url_toolkit *url_toolkit);
@@ -82,7 +83,7 @@ void init_toolkit_options(t_toolkit_options *options, char *website_root, t_url_
 #ifdef ENABLE_SSL
                           bool use_ssl,
 #endif
-                          bool allow_dot_files, t_headerfield *headerfields);
+                          bool allow_dot_files, t_http_header *http_headers);
 int use_toolkit(char *url, char *toolkit_id, t_toolkit_options *options);
 
 #endif

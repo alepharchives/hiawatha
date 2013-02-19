@@ -326,6 +326,9 @@ t_config *default_config(void) {
 	config->cache_size         = 10 * MEGABYTE;
 	config->cache_max_filesize = 256 * KILOBYTE;
 	config->cache_min_filesize = 1;
+#ifdef ENABLE_RPROXY
+	init_charlist(&(config->cache_rproxy_extensions));
+#endif
 #endif
 
 #ifdef ENABLE_TOMAHAWK
@@ -735,6 +738,12 @@ static bool system_setting(char *key, char *value, t_config *config) {
 		if ((config->cache_min_filesize = str2int(value)) > 0) {
 			return true;
 		}
+#ifdef ENABLE_RPROXY
+	} else if (strcmp(key, "cacherproxyextensions") == 0) {
+		if (parse_charlist(value, &(config->cache_rproxy_extensions)) != -1) {
+			return true;
+		}
+#endif
 	} else if (strcmp(key, "cachesize") == 0) {
 		if ((config->cache_size = str2int(value)) != -1) {
 			if (config->cache_size <= MAX_CACHE_SIZE) {
@@ -1216,7 +1225,7 @@ static bool host_setting(char *key, char *value, t_host *host) {
 		}
 		if (deny_body != NULL) {
 			deny_body->next = NULL;
-			if (regcomp(&(deny_body->pattern), value, REG_EXTENDED | REG_NOSUB) == 0) {
+			if (regcomp(&(deny_body->pattern), value, REG_EXTENDED | REG_ICASE | REG_NOSUB) == 0) {
 				return true;
 			}
 		}

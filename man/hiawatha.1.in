@@ -115,6 +115,12 @@ Number of seconds to ban an IP in case of <number> wrong passwords for HTTP auth
 .br
 Default = -:0, Example: BanOnWrongPassword = 3:120
 .TP
+.B CacheRProxyExtensions = <extension>[, <extension>, ...]
+Enable the internal cache for reverse proxy requests for these extensions.
+.br
+Example: CacheRProxyExtensions = css, gif, html, jpg, js, png
+.br
+.TP
 .B CacheSize = <size in megabytes>
 Size of Hiawatha's internal file cache. Maximum is 50 (megabytes).
 .br
@@ -134,7 +140,7 @@ Default = 256, example: CacheMaxFilesize = 128
 .B CacheMinFilesize = <size in bytes>
 Minimum size of a file Hiawatha will store in its internal cache.
 .br
-Default = 1, example: CacheMaxFilesize = 512
+Default = 1, example: CacheMinFilesize = 512
 .br
 
 (requires that Hiawatha was not compiled with -DENABLE_CACHE=off)
@@ -512,7 +518,7 @@ Prevent Cross-site Request Forgery by ignoring all cookies sent by a browser whe
 Default = no, example: PreventCSRF = yes
 .TP
 .B PreventSQLi = yes|no
-Prevent SQL-injection by detecting injections and denying the request via a 409 response. It is important to understand that the detection of SQL injections is done by best effort. There is no 100% guarantee that no injections are still possible. Note that using this feature can have a negative effect on the performance of your webserver. Use with caution. See also BanOnSQLi.
+Prevent SQL-injection by detecting injections and denying the request via a 409 response. It is important to understand that the detection of SQL injections is done by best effort. There is no 100% guarantee that all SQL injections are blocked. Note that using this feature can have a negative effect on the performance of your webserver. Use with caution. See also BanOnSQLi.
 .br
 Default = no, example: PreventSQLi = yes
 .TP
@@ -543,7 +549,7 @@ Default = no, example: RequireSSL = yes
 (requires that Hiawatha was not compiled with -DENABLE_SSL=off)
 .TP
 .B ReverseProxy <pattern> http[s]://<hostname>[:<port>][/<path>] [<timeout>]
-Forward the request with URLs that match the regular expression <pattern> to another webserver, where <path> is placed before the original URL. Note that the reverse proxy selection comes before the URL toolkit handling. When <hostname> is an IP address, the value of the Host HTTP header is unchanged. Otherwise, it is replaced with the value of <hostname>. The connection is closed after <timeout> seconds.
+Forward the request with URLs that match the regular expression <pattern> to another webserver, where <path> is placed before the original URL. Note that the reverse proxy selection comes before the URL toolkit handling. When <hostname> is an IP address, the value of the Host HTTP header is unchanged. Otherwise, it is replaced with the value of <hostname>. The connection is closed after <timeout> seconds, which is set to 5 seconds by default.
 .br
 Example: ReverseProxy ^/icons http://resources.lan/images
 .TP
@@ -630,7 +636,7 @@ Example: WrapCGI = test
 
 .\" ==========[ Directory configuration ]======================================
 .SH DIRECTORY CONFIGURATION
-This chapter explains how to override the configuration for specific directories.
+This chapter explains which options can be set for a specific directory. These options will override (virtual) host settings.
 .TP
 .B Path = <path|sub-path>
 The path to the directory. Path is a required field. Note that only the first Directory record that has a matching Path will be used. If Path ends with a slash (/), Hiawatha will seek anywhere in the path of the requested file for a match. If it does not end with a slash, Hiawatha will start matching from the beginning of the path.
@@ -886,7 +892,7 @@ Example: X-Hiawatha-Cache: 600
 .TP
 .B X-Hiawatha-Cache-Remove: <url>
 .br
-The output of <url> should be removed from the cache. Use this when you update a cached page in your CMS.
+The output of <url> should be removed from the cache. Use this when you update a cached page in your CMS. Use 'all' as the URL to clear the cache for the current website.
 .br
 Example: X-Hiawatha-Cache-Remove: /about
 

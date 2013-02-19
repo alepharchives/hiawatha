@@ -69,7 +69,7 @@ static void clear_session(t_session *session) {
 	session->alias_used = false;
 	session->vars = NULL;
 	session->http_version = NULL;
-	session->headerfields = NULL;
+	session->http_headers = NULL;
 	session->body = NULL;
 	session->local_user = NULL;
 	session->header_sent = false;
@@ -160,7 +160,7 @@ void reset_session(t_session *session) {
 		unlink(session->uploaded_file);
 		free(session->uploaded_file);
 	}
-	session->headerfields = remove_headerfields(session->headerfields);
+	session->http_headers = remove_http_headers(session->http_headers);
 	if (session->directory != NULL) {
 		pthread_mutex_lock(&(session->directory->client_mutex));
 		if (session->part_of_dirspeed) {
@@ -474,7 +474,7 @@ bool client_is_rejected_bot(t_session *session) {
 
 	if (session->host->deny_bot == NULL) {
 		return false;
-	} else if ((useragent = get_headerfield("User-Agent:", session->headerfields)) == NULL) {
+	} else if ((useragent = get_http_header("User-Agent:", session->http_headers)) == NULL) {
 		return false;
 	}
 
@@ -710,7 +710,7 @@ int prevent_csrf(t_session *session) {
 		return 0;
 	}
 
-	if ((referer = get_headerfield("Referer:", session->headerfields)) == NULL) {
+	if ((referer = get_http_header("Referer:", session->http_headers)) == NULL) {
 		return 0;
 	}
 

@@ -459,6 +459,7 @@ t_cgi_result read_from_cgi_process(t_session *session, t_cgi_info *cgi_info) {
 	bool read_again;
 	struct pollfd poll_data[2];
 	int poll_size;
+	size_t can_read;
 
 	poll_size = 0;
 	if (cgi_info->from_cgi != -1) {
@@ -498,7 +499,11 @@ t_cgi_result read_from_cgi_process(t_session *session, t_cgi_info *cgi_info) {
 		if (poll_data[0].revents != 0) do {
 			read_again = false;
 
-			bytes_read = read(cgi_info->from_cgi, cgi_info->input_buffer + cgi_info->input_len, cgi_info->input_buffer_size - cgi_info->input_len);
+			if ((can_read = cgi_info->input_buffer_size - cgi_info->input_len) <= 0) {
+				break;
+			}
+
+			bytes_read = read(cgi_info->from_cgi, cgi_info->input_buffer + cgi_info->input_len, can_read);
 			switch (bytes_read) {
 				case -1:
 					if (errno != EINTR) {

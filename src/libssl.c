@@ -32,6 +32,7 @@
 #include "polarssl/entropy.h"
 #include "polarssl/dhm.h"
 #include "polarssl/ssl_cache.h"
+#include "polarssl/error.h"
 
 typedef struct type_sni_list {
 	t_charlist *hostname;
@@ -177,6 +178,15 @@ static int ssl_set_cache(void *data, const ssl_session *session) {
 	return result;
 }
 
+static void print_ssl_error(char *message, int code) {
+	char cause[1024];
+
+	error_strerror(code, cause, 1023);
+	cause[1023] = '\0';
+
+	fprintf(stderr, "%s (-0x%X): %s\n", message, -code, cause);
+}
+
 /* Load private key and certificate from file
  */
 int ssl_load_key_cert(char *file, rsa_context **private_key, x509_cert **certificate) {
@@ -192,7 +202,7 @@ int ssl_load_key_cert(char *file, rsa_context **private_key, x509_cert **certifi
 	memset(*private_key, 0, sizeof(rsa_context));
 
 	if ((result = x509parse_keyfile(*private_key, file, NULL)) != 0) {
-		fprintf(stderr, "Error loading RSA private key (%X).\n", result);
+		print_ssl_error("Error loading RSA private key", result);
 		return -1;
 	}
 
@@ -202,7 +212,7 @@ int ssl_load_key_cert(char *file, rsa_context **private_key, x509_cert **certifi
 	memset(*certificate, 0, sizeof(x509_cert));
 
 	if ((result = x509parse_crtfile(*certificate, file)) != 0) {
-		fprintf(stderr, "Error loading X509 certificates (%X).\n", result);
+		print_ssl_error("Error loading X509 certificates", result);
 		return -1;
 	}
 
@@ -224,7 +234,7 @@ int ssl_load_ca_cert(char *file, x509_cert **ca_certificate) {
 	memset(*ca_certificate, 0, sizeof(x509_cert));
 
 	if ((result = x509parse_crtfile(*ca_certificate, file)) != 0) {
-		fprintf(stderr, "Error loading X509 CA certificate (%X).\n", result);
+		print_ssl_error("Error loading X509 CA certificate", result);
 		return -1;
 	}
 
@@ -246,7 +256,7 @@ int ssl_load_ca_crl(char *file, x509_crl **ca_crl) {
 	memset(*ca_crl, 0, sizeof(x509_crl));
 
 	if ((result = x509parse_crlfile(*ca_crl, file)) != 0) {
-		fprintf(stderr, "Error loading X509 CA CRL (%X).\n", result);
+		print_ssl_error("Error loading X509 CA CRL", result);
 		return -1;
 	}
 

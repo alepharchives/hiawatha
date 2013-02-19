@@ -324,6 +324,9 @@ typedef struct type_config {
 	off_t         cache_size;
 	off_t         cache_max_filesize;
 	off_t         cache_min_filesize;
+#ifdef ENABLE_RPROXY
+	t_charlist    cache_rproxy_extensions;
+#endif
 #endif
 
 #ifdef ENABLE_TOMAHAWK

@@ -545,3 +545,28 @@ bool hostname_match(char *hostname, char *pattern) {
 
 	return false;
 }
+
+bool extension_from_uri(char *line, char *extension, size_t size) {
+	char *dot, *qmark;
+	size_t len;
+
+	if ((dot = strrchr(line, '.')) == NULL) {
+		return false;
+	}
+	dot++;
+
+	if ((qmark = strchr(dot, '?')) == NULL) {
+		len = strlen(dot);
+	} else {
+		len = qmark - line;
+	}
+
+	if (len >= size) {
+		return false;
+	}
+
+	memcpy(extension, dot, len);
+	*(extension + len) = '\0';
+
+	return true;
+}

@@ -132,10 +132,10 @@ static void add_parameter(const char **params, char *key, char *value, int *i) {
 	params[(*i)++] = str + key_len + 1;
 }
 
-static void add_headerfield(t_session *session, const char **params, char *header, char *key, int *i) {
+static void add_http_header(t_session *session, const char **params, char *header, char *key, int *i) {
 	char *value;
 
-	value = get_headerfield(header, session->headerfields);
+	value = get_http_header(header, session->http_headers);
 	add_parameter(params, key, value, i);
 }
 
@@ -161,7 +161,7 @@ static void add_parameter_line(const char **params, char *line, char split, char
 
 static const char **get_transform_parameters(t_session *session) {
 	char ip[MAX_IP_STR_LEN], value[20], variable[MAX_HEADER_LEN];
-	t_headerfield *headerfields;
+	t_http_header *http_headers;
 	const char **params;
 	int i = 0;
 
@@ -197,29 +197,29 @@ static const char **get_transform_parameters(t_session *session) {
 	}
 	add_parameter(params, "REMOTE_USER", session->remote_user, &i);
 
-	add_headerfield(session, params, "Accept:", "HTTP_ACCEPT", &i);
-	add_headerfield(session, params, "Accept-Charset:", "HTTP_ACCEPT_CHARSET", &i);
-	add_headerfield(session, params, "Accept-Language:", "HTTP_ACCEPT_LANGUAGE", &i);
-	add_headerfield(session, params, "Client-IP:", "HTTP_CLIENT_IP", &i);
-	add_headerfield(session, params, "From:", "HTTP_FROM", &i);
-	add_headerfield(session, params, "Host:", "HTTP_HOST", &i);
-	add_headerfield(session, params, "If-Modified-Since:", "HTTP_IF_MODIFIED_SINCE", &i);
-	add_headerfield(session, params, "If-Unmodified-Since:", "HTTP_IF_UNMODIFIED_SINCE", &i);
-	add_headerfield(session, params, "Range:", "HTTP_RANGE", &i);
-	add_headerfield(session, params, "Referer:", "HTTP_REFERER", &i);
-	add_headerfield(session, params, "User-Agent:", "HTTP_USER_AGENT", &i);
-	add_headerfield(session, params, "Via:", "HTTP_VIA", &i);
+	add_http_header(session, params, "Accept:", "HTTP_ACCEPT", &i);
+	add_http_header(session, params, "Accept-Charset:", "HTTP_ACCEPT_CHARSET", &i);
+	add_http_header(session, params, "Accept-Language:", "HTTP_ACCEPT_LANGUAGE", &i);
+	add_http_header(session, params, "Client-IP:", "HTTP_CLIENT_IP", &i);
+	add_http_header(session, params, "From:", "HTTP_FROM", &i);
+	add_http_header(session, params, "Host:", "HTTP_HOST", &i);
+	add_http_header(session, params, "If-Modified-Since:", "HTTP_IF_MODIFIED_SINCE", &i);
+	add_http_header(session, params, "If-Unmodified-Since:", "HTTP_IF_UNMODIFIED_SINCE", &i);
+	add_http_header(session, params, "Range:", "HTTP_RANGE", &i);
+	add_http_header(session, params, "Referer:", "HTTP_REFERER", &i);
+	add_http_header(session, params, "User-Agent:", "HTTP_USER_AGENT", &i);
+	add_http_header(session, params, "Via:", "HTTP_VIA", &i);
 
 	/* Convert X-* HTTP headers to HTTP_* variables
 	 */
-	headerfields = session->headerfields;
-	while (headerfields != NULL) {
-		if (strncmp(headerfields->data, "X-", 2) == 0) {
-			if (header_to_variable(headerfields->data, (char*)&variable, MAX_HEADER_LEN) != -1) {
-				add_parameter(params, variable, headerfields->data + headerfields->value_offset, &i);
+	http_headers = session->http_headers;
+	while (http_headers != NULL) {
+		if (strncmp(http_headers->data, "X-", 2) == 0) {
+			if (header_to_variable(http_headers->data, (char*)&variable, MAX_HEADER_LEN) != -1) {
+				add_parameter(params, variable, http_headers->data + http_headers->value_offset, &i);
 			}
 		}
-		headerfields = headerfields->next;
+		http_headers = http_headers->next;
 	}
 
 	value[19] = '\0';
@@ -235,7 +235,7 @@ static const char **get_transform_parameters(t_session *session) {
 		value[19] = '\0';
 		snprintf(value, 19, "%ld", session->content_length);
 		add_parameter(params, "CONTENT_LENGTH", value, &i);
-		add_headerfield(session, params, "Content-Type:", "CONTENT_TYPE", &i);
+		add_http_header(session, params, "Content-Type:", "CONTENT_TYPE", &i);
 	}
 
 	add_parameter_line(params, session->vars, '&', "GET_", &i);

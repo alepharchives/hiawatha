@@ -33,6 +33,7 @@
 
 #define RPROXY_ID_LEN   10 /* Must be smaller than 32 */
 #define MAX_SEND_BUFFER  2 * KILOBYTE
+#define EXTENSION_SIZE  10
 
 static char   *rproxy_header;
 static size_t rproxy_header_len;
@@ -202,10 +203,10 @@ bool rproxy_match(t_rproxy *rproxy, char *uri) {
 
 /* Detect reverse proxy loop
  */
-bool rproxy_loop_detected(t_headerfield *headerfields) {
+bool rproxy_loop_detected(t_http_header *http_headers) {
 	char *value;
 
-	if ((value = get_headerfield(rproxy_id_key, headerfields)) == NULL) {
+	if ((value = get_http_header(rproxy_id_key, http_headers)) == NULL) {
 		return false;
 	}
 
@@ -219,16 +220,22 @@ bool rproxy_loop_detected(t_headerfield *headerfields) {
 /* Init reverse proxy options record
  */
 void init_rproxy_options(t_rproxy_options *options, int socket, t_ip_addr *client_ip,
-	                     char *method, char *uri, t_headerfield *headerfields,
+	                     char *method, char *uri, t_http_header *http_headers,
 	                     char *body, int body_length, char *remote_user) {
 	options->client_socket = socket;
 	options->client_ip = client_ip;
 	options->method = method;
 	options->uri = uri;
-	options->headerfields = headerfields;
+	options->http_headers = http_headers;
 	options->body = body;
 	options->body_length = body_length;
 	options->remote_user = remote_user;
+}
+
+/* Init reverse proxy result record
+ */
+void init_rproxy_result(t_rproxy_result *result) {
+	result->bytes_sent = 0;
 }
 
 /* Connect to the webserver
@@ -290,7 +297,7 @@ static int send_buffer_to_webserver(t_rproxy_webserver *webserver, const char *b
 
 /* Send buffer to webserver
  */
-static int send_to_webserver(t_rproxy_webserver *webserver, t_send_buffer *send_buffer, const char *buffer, int size) {
+static int send_to_webserver(t_rproxy_webserver *webserver, t_rproxy_result *result, t_send_buffer *send_buffer, const char *buffer, int size) {
 	if (buffer == NULL) {
 		if (send_buffer->bytes_in_buffer > 0) {
 			if (send_buffer_to_webserver(webserver, send_buffer->buffer, send_buffer->bytes_in_buffer) == -1) {
@@ -317,16 +324,21 @@ static int send_to_webserver(t_rproxy_webserver *webserver, t_send_buffer *send_
 		send_buffer->bytes_in_buffer += size;
 	}
 
+	result->bytes_sent += size;
+
 	return 0;
 }
 
 /* Send the request to the webserver
  */
-int send_request_to_webserver(t_rproxy_webserver *webserver, t_rproxy_options *options, t_rproxy *rproxy) {
-	t_headerfield *headerfield;
+int send_request_to_webserver(t_rproxy_webserver *webserver, t_rproxy_options *options, t_rproxy *rproxy, t_rproxy_result *result) {
+	t_http_header *http_header;
 	char forwarded_for[20 + MAX_IP_STR_LEN], ip_addr[MAX_IP_STR_LEN];
 	bool forwarded_found = false;
 	t_send_buffer send_buffer;
+#ifdef ENABLE_CACHE
+	char extension[EXTENSION_SIZE];
+#endif
 
 	send_buffer.bytes_in_buffer = 0;
 
@@ -336,69 +348,81 @@ int send_request_to_webserver(t_rproxy_webserver *webserver, t_rproxy_options *o
 
 	/* Send first line
 	 */
-	if (send_to_webserver(webserver, &send_buffer, options->method, strlen(options->method)) == -1) {
+	if (send_to_webserver(webserver, result, &send_buffer, options->method, strlen(options->method)) == -1) {
 		return -1;
-	} else if (send_to_webserver(webserver, &send_buffer, " ", 1) == -1) {
+	} else if (send_to_webserver(webserver, result, &send_buffer, " ", 1) == -1) {
 		return -1;
 	}
 
 	if (rproxy->path != NULL) {
-		if (send_to_webserver(webserver, &send_buffer, rproxy->path, rproxy->path_len) == -1) {
+		if (send_to_webserver(webserver, result, &send_buffer, rproxy->path, rproxy->path_len) == -1) {
 			return -1;
 		}
 	}
 
-	if (send_to_webserver(webserver, &send_buffer, options->uri, strlen(options->uri)) == -1) {
+	if (send_to_webserver(webserver, result, &send_buffer, options->uri, strlen(options->uri)) == -1) {
 		return -1;
-	} else if (send_to_webserver(webserver, &send_buffer, " HTTP/1.1\r\n", 11) == -1) {
+	} else if (send_to_webserver(webserver, result, &send_buffer, " HTTP/1.1\r\n", 11) == -1) {
 		return -1;
 	}
 
 	/* Send HTTP headers
 	 */
 	if (rproxy->hostname != NULL) {
-		if (send_to_webserver(webserver, &send_buffer, "Host: ", 6) == -1) {
+		if (send_to_webserver(webserver, result, &send_buffer, "Host: ", 6) == -1) {
 			return -1;
-		} else if (send_to_webserver(webserver, &send_buffer, rproxy->hostname, rproxy->hostname_len) == -1) {
+		} else if (send_to_webserver(webserver, result, &send_buffer, rproxy->hostname, rproxy->hostname_len) == -1) {
 			return -1;
-		} else if (send_to_webserver(webserver, &send_buffer, "\r\n", 2) == -1) {
+		} else if (send_to_webserver(webserver, result, &send_buffer, "\r\n", 2) == -1) {
 			return -1;
 		}
 	}
 
-	if (send_to_webserver(webserver, &send_buffer, rproxy_header, rproxy_header_len) == -1) {
+	if (send_to_webserver(webserver, result, &send_buffer, rproxy_header, rproxy_header_len) == -1) {
 		return -1;
 	}
 
-	for (headerfield = options->headerfields; headerfield != NULL; headerfield = headerfield->next) {
+	for (http_header = options->http_headers; http_header != NULL; http_header = http_header->next) {
 		if (rproxy->hostname != NULL) {
-			if (strncasecmp(headerfield->data, "Host:", 5) == 0) {
+			if (strncasecmp(http_header->data, "Host:", 5) == 0) {
 				continue;
 			}
 		}
 
-		if (strncasecmp(headerfield->data, "Connection:", 11) == 0) {
+		if (strncasecmp(http_header->data, "Connection:", 11) == 0) {
 			continue;
-		} else if (strncasecmp(headerfield->data, "X-Forwarded-User:", 17) == 0) {
+		}
+
+#ifdef ENABLE_CACHE
+		if (strncasecmp(http_header->data, "If-Modified-Since:", 18) == 0) {
+			if (extension_from_uri(options->uri, extension, EXTENSION_SIZE)) {
+				if (in_charlist(extension, options->cache_extensions)) {
+					continue;
+				}
+			}
+		}
+#endif
+
+		if (strncasecmp(http_header->data, "X-Forwarded-User:", 17) == 0) {
 			continue;
 		}
 
 
-		if (send_to_webserver(webserver, &send_buffer, headerfield->data, headerfield->length) == -1) {
+		if (send_to_webserver(webserver, result, &send_buffer, http_header->data, http_header->length) == -1) {
 			return -1;
 		}
 
-		if (strncasecmp(headerfield->data, hs_forwarded, 16) == 0) {
+		if (strncasecmp(http_header->data, hs_forwarded, 16) == 0) {
 			/* Add IP to X-Forwarded-For header
 			 */
 			if (sprintf(forwarded_for, ", %s\r\n", ip_addr) == -1) {
 				return -1;
-			} else if (send_to_webserver(webserver, &send_buffer, forwarded_for, strlen(forwarded_for)) == -1) {
+			} else if (send_to_webserver(webserver, result, &send_buffer, forwarded_for, strlen(forwarded_for)) == -1) {
 				return -1;
 			}
 
 			forwarded_found = true;
-		} else if (send_to_webserver(webserver, &send_buffer, "\r\n", 2) == -1) {
+		} else if (send_to_webserver(webserver, result, &send_buffer, "\r\n", 2) == -1) {
 			return -1;
 		}
 	}
@@ -408,7 +432,7 @@ int send_request_to_webserver(t_rproxy_webserver *webserver, t_rproxy_options *o
 	if (forwarded_found == false) {
 		if (sprintf(forwarded_for, "%s %s\r\n", hs_forwarded, ip_addr) == -1) {
 			return -1;
-		} else if (send_to_webserver(webserver, &send_buffer, forwarded_for, strlen(forwarded_for)) == -1) {
+		} else if (send_to_webserver(webserver, result, &send_buffer, forwarded_for, strlen(forwarded_for)) == -1) {
 			return -1;
 		}
 	}
@@ -416,30 +440,30 @@ int send_request_to_webserver(t_rproxy_webserver *webserver, t_rproxy_options *o
 	/* Send X-Forwarded-User
 	 */
 	if (options->remote_user != NULL) {
-		if (send_to_webserver(webserver, &send_buffer, "X-Forwarded-User: ", 18) == -1) {
+		if (send_to_webserver(webserver, result, &send_buffer, "X-Forwarded-User: ", 18) == -1) {
 			return -1;
-		} else if (send_to_webserver(webserver, &send_buffer, options->remote_user, strlen(options->remote_user)) == -1) {
+		} else if (send_to_webserver(webserver, result, &send_buffer, options->remote_user, strlen(options->remote_user)) == -1) {
 			return -1;
-		} else if (send_to_webserver(webserver, &send_buffer, "\r\n", 2) == -1) {
+		} else if (send_to_webserver(webserver, result, &send_buffer, "\r\n", 2) == -1) {
 			return -1;
 		}
 	}
 
 	/* Close header
 	 */
-	if (send_to_webserver(webserver, &send_buffer, "\r\n", 2) == -1) {
+	if (send_to_webserver(webserver, result, &send_buffer, "\r\n", 2) == -1) {
 		return -1;
 	}
 
 	/* Send body
 	 */
 	if (options->body != NULL) {
-		if (send_to_webserver(webserver, &send_buffer, options->body, options->body_length) == -1) {
+		if (send_to_webserver(webserver, result, &send_buffer, options->body, options->body_length) == -1) {
 			return -1;
 		}
 	}
 
-	if (send_to_webserver(webserver, &send_buffer, NULL, 0) == -1) {
+	if (send_to_webserver(webserver, result, &send_buffer, NULL, 0) == -1) {
 		return -1;
 	}
 

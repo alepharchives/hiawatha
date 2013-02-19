@@ -1,0 +1,1 @@
+/usr/bin/clang  -Wall -Wextra -O2 -g    CMakeFiles/wigwam.dir/src/alternative.c.o CMakeFiles/wigwam.dir/src/libfs.c.o CMakeFiles/wigwam.dir/src/libip.c.o CMakeFiles/wigwam.dir/src/libstr.c.o CMakeFiles/wigwam.dir/src/liblist.c.o CMakeFiles/wigwam.dir/src/toolkit.c.o CMakeFiles/wigwam.dir/src/wigwam.c.o CMakeFiles/wigwam.dir/polarssl/library/md5.c.o  -o wigwam -rdynamic -lcrypt 

@@ -1,0 +1,1 @@
+/usr/bin/clang  -Wall -Wextra -O2 -g    CMakeFiles/ssi-cgi.dir/src/alternative.c.o CMakeFiles/ssi-cgi.dir/src/libfs.c.o CMakeFiles/ssi-cgi.dir/src/libip.c.o CMakeFiles/ssi-cgi.dir/src/liblist.c.o CMakeFiles/ssi-cgi.dir/src/libstr.c.o CMakeFiles/ssi-cgi.dir/src/ssi-cgi.c.o  -o ssi-cgi -rdynamic 

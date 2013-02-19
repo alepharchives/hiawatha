@@ -65,7 +65,7 @@ typedef struct type_session {
 	bool            encode_gzip;
 	bool            alias_used;
 	bool            request_limit;
-	t_headerfield   *headerfields;
+	t_http_header   *http_headers;
 	t_ip_addr       ip_address;
 	char            *mimetype;
 	char            *hostname;

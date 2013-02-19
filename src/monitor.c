@@ -347,13 +347,13 @@ int monitor_request(t_session *session) {
 	ip_to_str(ip_address, &(session->ip_address), MAX_IP_STR_LEN);
 	ip_address[MAX_IP_STR_LEN] = '\0';
 
-	if ((user_agent = get_headerfield("User-Agent:", session->headerfields)) == NULL) {
+	if ((user_agent = get_http_header("User-Agent:", session->http_headers)) == NULL) {
 		user_agent = "-";
 	} else {
 		secure_monitor_value(user_agent);
 	}
 
-	if ((referer = get_headerfield("Referer:", session->headerfields)) == NULL) {
+	if ((referer = get_http_header("Referer:", session->http_headers)) == NULL) {
 		referer = "-";
 	} else {
 		secure_monitor_value(referer);

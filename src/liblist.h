@@ -19,13 +19,13 @@
 typedef enum { deny, allow, pwd, unspecified } t_access;
 typedef enum { tc_data, tc_charlist, tc_accesslist, tc_keyvalue, tc_errorhandler } t_tempdata_type;
 
-typedef struct type_headerfield {
+typedef struct type_http_header {
 	char *data;
 	int  length;
 	int  value_offset;
 
-	struct type_headerfield *next;
-} t_headerfield;
+	struct type_http_header *next;
+} t_http_header;
 
 typedef struct type_charlist {
 	int  size;
@@ -83,9 +83,9 @@ typedef struct type_error_handler {
 	struct type_error_handler *next;
 } t_error_handler;
 
-t_headerfield *parse_headerfields(char *line);
-char *get_headerfield(char *key, t_headerfield *headerfields);
-t_headerfield *remove_headerfields(t_headerfield *headerfields);
+t_http_header *parse_http_headers(char *line);
+char *get_http_header(char *key, t_http_header *http_headers);
+t_http_header *remove_http_headers(t_http_header *http_headers);
 
 void init_charlist(t_charlist *list);
 int  parse_charlist(char *value, t_charlist *list);

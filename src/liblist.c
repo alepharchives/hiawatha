@@ -21,10 +21,10 @@
 
 /*---< headerlist >-----------------------------------------------------------*/
 
-/* Parse the HTTP headerfields from the received request.
+/* Parse the HTTP http_headers from the received request.
  */
-t_headerfield *parse_headerfields(char *line) {
-	t_headerfield *first, *headerfield;
+t_http_header *parse_http_headers(char *line) {
+	t_http_header *first, *http_header;
 	char *value;
 
 	if (line == NULL) {
@@ -33,30 +33,30 @@ t_headerfield *parse_headerfields(char *line) {
 		return NULL;
 	}
 
-	if ((first = headerfield = (t_headerfield*)malloc(sizeof(t_headerfield))) == NULL) {
+	if ((first = http_header = (t_http_header*)malloc(sizeof(t_http_header))) == NULL) {
 		return NULL;
 	}
-	headerfield->data = line;
-	headerfield->length = 0;
-	headerfield->next = NULL;
+	http_header->data = line;
+	http_header->length = 0;
+	http_header->next = NULL;
 	while (*line != '\0') {
 		if (*line == '\r') {
 			*line = '\0';
-			headerfield->length = strlen(headerfield->data);
+			http_header->length = strlen(http_header->data);
 			if (*(line + 1) == '\n') {
 				if ((*(line + 2) != '\r') && (*(line + 2) != '\0')) {
-					if ((headerfield->next = (t_headerfield*)malloc(sizeof(t_headerfield))) == NULL) {
+					if ((http_header->next = (t_http_header*)malloc(sizeof(t_http_header))) == NULL) {
 						return first;
 					}
-					headerfield = headerfield->next;
-					headerfield->next = NULL;
-					headerfield->data = line + 2;
-					headerfield->length = 0;
+					http_header = http_header->next;
+					http_header->next = NULL;
+					http_header->data = line + 2;
+					http_header->length = 0;
 				} else {
 					break;
 				}
 			} else {
-				headerfield->data = line + 1;
+				http_header->data = line + 1;
 			}
 		}
 		line++;
@@ -67,54 +67,54 @@ t_headerfield *parse_headerfields(char *line) {
 		return NULL;
 	}
 
-	if (headerfield->length == 0) {
-		headerfield->length = strlen(headerfield->data);
+	if (http_header->length == 0) {
+		http_header->length = strlen(http_header->data);
 	}
 
-	headerfield = first;
-	while (headerfield != NULL) {
-		if ((value = strchr(headerfield->data, ':')) != NULL) {
+	http_header = first;
+	while (http_header != NULL) {
+		if ((value = strchr(http_header->data, ':')) != NULL) {
 			do {
 				value++;
 			} while ((*value == ' ') && (*value != '\0'));
-			headerfield->value_offset = (value - headerfield->data);
+			http_header->value_offset = (value - http_header->data);
 		} else {
-			headerfield->value_offset = 0;
+			http_header->value_offset = 0;
 		}
-		headerfield = headerfield->next;
+		http_header = http_header->next;
 	}
 
 	return first;
 }
 
-/* Search for a headerfield and return its value.
+/* Search for a http_header and return its value.
  */
-char *get_headerfield(char *key, t_headerfield *headerfields) {
+char *get_http_header(char *key, t_http_header *http_headers) {
 	int len;
 
-	if ((key == NULL) || (headerfields == NULL)) {
+	if ((key == NULL) || (http_headers == NULL)) {
 		return NULL;
 	}
 
 	len = strlen(key);
-	while (headerfields != NULL) {
-		if (strncasecmp(headerfields->data, key, len) == 0) {
-			return headerfields->data + headerfields->value_offset;
+	while (http_headers != NULL) {
+		if (strncasecmp(http_headers->data, key, len) == 0) {
+			return http_headers->data + http_headers->value_offset;
 		}
-		headerfields = headerfields->next;
+		http_headers = http_headers->next;
 	}
 
 	return NULL;
 }
 
-/* free() a list of headerfields.
+/* free() a list of http_headers.
  */
-t_headerfield *remove_headerfields(t_headerfield *headerfields) {
-	t_headerfield *remove;
+t_http_header *remove_http_headers(t_http_header *http_headers) {
+	t_http_header *remove;
 
-	while (headerfields != NULL) {
-		remove = headerfields;
-		headerfields = headerfields->next;
+	while (http_headers != NULL) {
+		remove = http_headers;
+		http_headers = http_headers->next;
 
 		free(remove);
 	}
@@ -243,17 +243,17 @@ t_accesslist *parse_accesslist(char *line, bool pwd_allowed, t_accesslist *list)
 			}
 			new->next = NULL;
 
-			if (strcmp(rule, "allow") == 0) {
+			if (strcasecmp(rule, "allow") == 0) {
 				new->access = allow;
-			} else if (strcmp(rule, "deny") == 0) {
+			} else if (strcasecmp(rule, "deny") == 0) {
 				new->access = deny;
-			} else if (pwd_allowed && (strcmp(rule, "pwd") == 0)) {
+			} else if (pwd_allowed && (strcasecmp(rule, "pwd") == 0)) {
 				new->access = pwd;
 			} else {
 				error = true;
 				break;
 			}
-			if (strcmp(ip, "all") == 0) {
+			if (strcasecmp(ip, "all") == 0) {
 				default_ipv4(&(new->ip));
 				new->netmask = 0;
 				new->all_ip = true;

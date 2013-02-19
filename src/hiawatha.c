@@ -315,9 +315,9 @@ int run_program(t_session *session, char *program, int return_code) {
 				snprintf(value, 9, "%d", return_code);
 				setenv("HTTP_RETURN_CODE", value, 1);
 
-				headerfield_to_environment(session, NULL, "Range:", "HTTP_RANGE");
-				headerfield_to_environment(session, NULL, "Referer:", "HTTP_REFERER");
-				headerfield_to_environment(session, NULL, "User-Agent:", "HTTP_USER_AGENT");
+				http_header_to_environment(session, NULL, "Range:", "HTTP_RANGE");
+				http_header_to_environment(session, NULL, "Referer:", "HTTP_REFERER");
+				http_header_to_environment(session, NULL, "User-Agent:", "HTTP_USER_AGENT");
 
 				/* Change directory to program's directory
 				 */
@@ -358,7 +358,7 @@ t_access allow_client(t_session *session) {
 
 	if ((access = ip_allowed(&(session->ip_address), session->host->access_list)) != allow) {
 		return access;
-	} else if ((x_forwarded_for = get_headerfield(hs_forwarded, session->headerfields)) == NULL) {
+	} else if ((x_forwarded_for = get_http_header(hs_forwarded, session->http_headers)) == NULL) {
 		return allow;
 	} else if (parse_ip(x_forwarded_for, &forwarded_ip) == -1) {
 		return allow;
@@ -408,7 +408,7 @@ int serve_client(t_session *session) {
 	/* Hide reverse proxies
 	 */
 	if (in_iplist(session->config->hide_proxy, &(session->ip_address))) {
-		if ((client_ip = get_headerfield(hs_forwarded, session->headerfields)) != NULL) {
+		if ((client_ip = get_http_header(hs_forwarded, session->http_headers)) != NULL) {
 			if ((search = strrchr(client_ip, ',')) != NULL) {
 				client_ip = search + 1;
 			}
@@ -507,7 +507,7 @@ int serve_client(t_session *session) {
 	rproxy = session->host->rproxy;
 	while (rproxy != NULL) {
 		if (rproxy_match(rproxy, session->request_uri)) {
-			if (rproxy_loop_detected(session->headerfields)) {
+			if (rproxy_loop_detected(session->http_headers)) {
 				return 508;
 			}
 
@@ -600,10 +600,10 @@ int serve_client(t_session *session) {
 	 */
 #ifdef ENABLE_SSL
 	init_toolkit_options(&toolkit_options, session->host->website_root, session->config->url_toolkit,
-	                     session->binding->use_ssl, session->host->allow_dot_files, session->headerfields);
+	                     session->binding->use_ssl, session->host->allow_dot_files, session->http_headers);
 #else
 	init_toolkit_options(&toolkit_options, session->host->website_root, session->config->url_toolkit,
-	                     session->host->allow_dot_files, session->headerfields);
+	                     session->host->allow_dot_files, session->http_headers);
 #endif
 
 	if ((session->request_method != PUT) && (session->request_method != DELETE)) {

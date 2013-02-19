@@ -46,10 +46,13 @@ typedef struct {
 	char          *method;
 	char          *uri;
 	char          *vars;
-	t_headerfield *headerfields;
+	t_http_header *http_headers;
 	char          *body;
 	int           body_length;
 	char          *remote_user;
+#ifdef ENABLE_CACHE
+	t_charlist    *cache_extensions;
+#endif
 } t_rproxy_options;
 
 typedef struct {
@@ -60,16 +63,21 @@ typedef struct {
 #endif
 } t_rproxy_webserver;
 
+typedef struct {
+	int bytes_sent;
+} t_rproxy_result;
+
 int init_rproxy_module(void);
 t_rproxy *rproxy_setting(char *line);
 bool rproxy_match(t_rproxy *rproxy, char *uri);
-bool rproxy_loop_detected(t_headerfield *headerfields);
+bool rproxy_loop_detected(t_http_header *http_headers);
 void init_rproxy_options(t_rproxy_options *options, int socket, t_ip_addr *client_ip,
-                         char *method, char *uri, t_headerfield *headerfields,
+                         char *method, char *uri, t_http_header *http_headers,
                          char *body, int body_length, char *remote_user);
+void init_rproxy_result(t_rproxy_result *result);
 int connect_to_webserver(t_rproxy *rproxy);
 int send_request_to_webserver(t_rproxy_webserver *webserver, t_rproxy_options *options,
-                              t_rproxy *rproxy);
+                              t_rproxy *rproxy, t_rproxy_result *result);
 
 #endif
 

@@ -349,8 +349,10 @@ int send_header(t_session *session) {
 
 	/* HTTP Strict Transport Security
 	 */
-	if (send_buffer(session, hs_hsts, 45) == -1) {
-		return -1;
+	if (session->host->require_ssl && session->binding->use_ssl) {
+		if (send_buffer(session, hs_hsts, 45) == -1) {
+			return -1;
+		}
 	}
 
 	return 0;

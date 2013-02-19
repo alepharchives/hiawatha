@@ -15,7 +15,7 @@
 #include "session.h"
 #include "send.h"
 
-int headerfield_to_environment(t_session *session, t_fcgi_buffer *fcgi_buffer, char *key, char *envir);
+int http_header_to_environment(t_session *session, t_fcgi_buffer *fcgi_buffer, char *key, char *envir);
 void set_environment(t_session *session, t_fcgi_buffer *fcgi_buffer);
 
 #endif

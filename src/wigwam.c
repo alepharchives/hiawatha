@@ -36,6 +36,12 @@
 #define MAX_INPUT_SIZE KILOBYTE
 #define MAX_PATH 1024
 
+#define HASH_MD5    1
+#define HASH_SHA256 5
+#define HASH_SHA512 6
+
+#define HASH_ALGORITM HASH_MD5
+
 typedef struct type_line {
 	char *key, *value, *file;
 	int linenr;
@@ -732,17 +738,20 @@ void read_password(char *buffer, int size) {
 }
 
 void create_basic_password(char *username) {
-	char password[100], salt[3], *encrypted;
+	char password[100], salt[21], *encrypted;
 	char *salt_digits = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789./";
-	int len;
+	int len, i;
 
 	srand((unsigned)time(NULL));
 	len = strlen(salt_digits);
 
 	read_password(password, 100);
-	salt[0] = salt_digits[rand() % len];
-	salt[1] = salt_digits[rand() % len];
-	salt[2] = '\0';
+
+	sprintf(salt, "$%d$", HASH_ALGORITM);
+	for (i = 3; i < 19; i++) {
+		salt[i] = salt_digits[rand() % len];
+	}
+	strcpy(salt + 19, "$");
 	encrypted = crypt(password, salt);
 
 	printf("%s:%s\n", username, encrypted);

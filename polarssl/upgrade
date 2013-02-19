@@ -1,12 +1,23 @@
 #!/bin/sh
 
+echo "Removing current PolarSSL library."
 rm -rf include
 rm -rf library
 
-svn co http://polarssl.org/repos/polarssl/polarssl/trunk trunk
-mv trunk/ChangeLog .
-mv trunk/include .
-mv trunk/library .
-rm -rf trunk
+echo "Downloading latest PolarSSL library."
+wget -qO polarssl-latest.tgz https://polarssl.org/download/latest-stable
+if [ ! -s polarssl-latest.tgz ]; then 
+	echo "Download error."
+	exit
+fi
 
-rm -rf `find -type d | grep ".svn$"`
+echo "Installing PolarSSL."
+tar -xzf polarssl-latest.tgz
+dir=`tar -tzf polarssl-latest.tgz | head -n1`
+mv ${dir}ChangeLog .
+mv ${dir}include .
+mv ${dir}library .
+
+echo "Cleaning up."
+rm -rf ${dir}
+rm polarssl-latest.tgz

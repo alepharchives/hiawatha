@@ -1196,7 +1196,7 @@ static int ssl_encrypt_buf( ssl_context *ssl )
 
 static int ssl_decrypt_buf( ssl_context *ssl )
 {
-    size_t i, padlen;
+    size_t i, padlen = 0, correct = 1;
     unsigned char tmp[POLARSSL_SSL_MAX_MAC_SIZE];
 
     SSL_DEBUG_MSG( 2, ( "=> decrypt buf" ) );
@@ -1211,7 +1211,6 @@ static int ssl_decrypt_buf( ssl_context *ssl )
     if( ssl->transform_in->ivlen == 0 )
     {
 #if defined(POLARSSL_ARC4_C)
-        padlen = 0;
         if( ssl->session_in->ciphersuite == TLS_RSA_WITH_RC4_128_MD5 ||
             ssl->session_in->ciphersuite == TLS_RSA_WITH_RC4_128_SHA )
         {
@@ -1236,8 +1235,6 @@ static int ssl_decrypt_buf( ssl_context *ssl )
         size_t dec_msglen;
         unsigned char add_data[13];
         int ret = POLARSSL_ERR_SSL_FEATURE_UNAVAILABLE;
-
-        padlen = 0;
 
 #if defined(POLARSSL_AES_C) && defined(POLARSSL_GCM_C)
         if( ssl->session_in->ciphersuite == TLS_RSA_WITH_AES_128_GCM_SHA256 ||
@@ -1296,17 +1293,32 @@ static int ssl_decrypt_buf( ssl_context *ssl )
     }
     else
     {
+        /*
+         * Decrypt and check the padding
+         */
         unsigned char *dec_msg;
         unsigned char *dec_msg_result;
         size_t dec_msglen;
+        size_t minlen = 0, fake_padlen;
 
         /*
-         * Decrypt and check the padding
+         * Check immediate ciphertext sanity
          */
         if( ssl->in_msglen % ssl->transform_in->ivlen != 0 )
         {
             SSL_DEBUG_MSG( 1, ( "msglen (%d) %% ivlen (%d) != 0",
                            ssl->in_msglen, ssl->transform_in->ivlen ) );
+            return( POLARSSL_ERR_SSL_INVALID_MAC );
+        }
+
+        if( ssl->minor_ver >= SSL_MINOR_VERSION_2 )
+            minlen += ssl->transform_in->ivlen;
+
+        if( ssl->in_msglen < minlen + ssl->transform_in->ivlen ||
+            ssl->in_msglen < minlen + ssl->transform_in->maclen + 1 )
+        {
+            SSL_DEBUG_MSG( 1, ( "msglen (%d) < max( ivlen(%d), maclen (%d) + 1 ) ( + expl IV )",
+                           ssl->in_msglen, ssl->transform_in->ivlen, ssl->transform_in->maclen ) );
             return( POLARSSL_ERR_SSL_INVALID_MAC );
         }
 
@@ -1387,32 +1399,57 @@ static int ssl_decrypt_buf( ssl_context *ssl )
         }
 
         padlen = 1 + ssl->in_msg[ssl->in_msglen - 1];
+        fake_padlen = 256 - padlen;
+
+        if( ssl->in_msglen < ssl->transform_in->maclen + padlen )
+        {
+#if defined(POLARSSL_SSL_DEBUG_ALL)
+            SSL_DEBUG_MSG( 1, ( "msglen (%d) < maclen (%d) + padlen (%d)",
+                        ssl->in_msglen, ssl->transform_in->maclen, padlen ) );
+#endif
+            padlen = 0;
+            fake_padlen = 256;
+            correct = 0;
+        }
 
         if( ssl->minor_ver == SSL_MINOR_VERSION_0 )
         {
             if( padlen > ssl->transform_in->ivlen )
             {
+#if defined(POLARSSL_SSL_DEBUG_ALL)
                 SSL_DEBUG_MSG( 1, ( "bad padding length: is %d, "
                                     "should be no more than %d",
                                padlen, ssl->transform_in->ivlen ) );
-                padlen = 0;
+#endif
+                correct = 0;
             }
         }
         else
         {
             /*
-             * TLSv1: always check the padding
+             * TLSv1+: always check the padding up to the first failure
+             * and fake check up to 256 bytes of padding
              */
             for( i = 1; i <= padlen; i++ )
             {
                 if( ssl->in_msg[ssl->in_msglen - i] != padlen - 1 )
                 {
-                    SSL_DEBUG_MSG( 1, ( "bad padding byte: should be "
-                                        "%02x, but is %02x", padlen - 1,
-                                   ssl->in_msg[ssl->in_msglen - i] ) );
+                    correct = 0;
+                    fake_padlen = 256 - i;
                     padlen = 0;
                 }
             }
+            for( i = 1; i <= fake_padlen; i++ )
+            {
+                if( ssl->in_msg[i + 1] != fake_padlen - 1 )
+                    minlen = 0;
+                else
+                    minlen = 1;
+            }
+#if defined(POLARSSL_SSL_DEBUG_ALL)
+            if( padlen > 0 && correct == 0)
+                SSL_DEBUG_MSG( 1, ( "bad padding byte detected" ) );
+#endif
         }
     }
 
@@ -1422,19 +1459,12 @@ static int ssl_decrypt_buf( ssl_context *ssl )
     /*
      * Always compute the MAC (RFC4346, CBCTIME).
      */
-    if( ssl->in_msglen < ssl->transform_in->maclen + padlen )
-    {
-        SSL_DEBUG_MSG( 1, ( "msglen (%d) < maclen (%d) + padlen (%d)",
-                    ssl->in_msglen, ssl->transform_in->maclen, padlen ) );
-        return( POLARSSL_ERR_SSL_INVALID_MAC );
-    }
-
     ssl->in_msglen -= ( ssl->transform_in->maclen + padlen );
 
     ssl->in_hdr[3] = (unsigned char)( ssl->in_msglen >> 8 );
     ssl->in_hdr[4] = (unsigned char)( ssl->in_msglen      );
 
-    memcpy( tmp, ssl->in_msg + ssl->in_msglen, POLARSSL_SSL_MAX_MAC_SIZE );
+    memcpy( tmp, ssl->in_msg + ssl->in_msglen, ssl->transform_in->maclen );
 
     if( ssl->minor_ver == SSL_MINOR_VERSION_0 )
     {
@@ -1459,6 +1489,10 @@ static int ssl_decrypt_buf( ssl_context *ssl )
     }
     else
     {
+        /*
+         * Process MAC and always update for padlen afterwards to make
+         * total time independent of padlen
+         */
         if( ssl->transform_in->maclen == 16 )
              md5_hmac( ssl->transform_in->mac_dec, 16,
                        ssl->in_ctr,  ssl->in_msglen + 13,
@@ -1487,15 +1521,13 @@ static int ssl_decrypt_buf( ssl_context *ssl )
                      ssl->transform_in->maclen ) != 0 )
     {
         SSL_DEBUG_MSG( 1, ( "message mac does not match" ) );
-        return( POLARSSL_ERR_SSL_INVALID_MAC );
+        correct = 0;
     }
 
     /*
-     * Finally check the padding length; bad padding
-     * will produce the same error as an invalid MAC.
+     * Finally check the correct flag
      */
-    if( ssl->transform_in->ivlen != 0 && ssl->transform_in->ivlen != 12 &&
-        padlen == 0 )
+    if( correct == 0 )
         return( POLARSSL_ERR_SSL_INVALID_MAC );
 
     if( ssl->in_msglen == 0 )
@@ -1943,6 +1975,14 @@ int ssl_read_record( ssl_context *ssl )
     {
         if( ( ret = ssl_decrypt_buf( ssl ) ) != 0 )
         {
+#if defined(POLARSSL_SSL_ALERT_MESSAGES)
+            if( ret == POLARSSL_ERR_SSL_INVALID_MAC )
+            {
+                ssl_send_alert_message( ssl,
+                                        SSL_ALERT_LEVEL_FATAL,
+                                        SSL_ALERT_MSG_BAD_RECORD_MAC );
+            }
+#endif
             SSL_DEBUG_RET( 1, "ssl_decrypt_buf", ret );
             return( ret );
         }
@@ -3513,23 +3553,41 @@ const int ssl_default_ciphersuites[] =
 };
 
 /*
- * Perform the SSL handshake
+ * Perform a single step of the SSL handshake
  */
-int ssl_handshake( ssl_context *ssl )
+int ssl_handshake_step( ssl_context *ssl )
 {
     int ret = POLARSSL_ERR_SSL_FEATURE_UNAVAILABLE;
 
-    SSL_DEBUG_MSG( 2, ( "=> handshake" ) );
-
 #if defined(POLARSSL_SSL_CLI_C)
     if( ssl->endpoint == SSL_IS_CLIENT )
-        ret = ssl_handshake_client( ssl );
+        ret = ssl_handshake_client_step( ssl );
 #endif
 
 #if defined(POLARSSL_SSL_SRV_C)
     if( ssl->endpoint == SSL_IS_SERVER )
-        ret = ssl_handshake_server( ssl );
+        ret = ssl_handshake_server_step( ssl );
 #endif
+
+    return( ret );
+}
+
+/*
+ * Perform the SSL handshake
+ */
+int ssl_handshake( ssl_context *ssl )
+{
+    int ret = 0;
+
+    SSL_DEBUG_MSG( 2, ( "=> handshake" ) );
+
+    while( ssl->state != SSL_HANDSHAKE_OVER )
+    {
+        ret = ssl_handshake_step( ssl );
+
+        if( ret != 0 )
+            break;
+    }
 
     SSL_DEBUG_MSG( 2, ( "<= handshake" ) );
 
